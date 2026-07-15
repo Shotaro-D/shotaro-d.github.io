@@ -1,6 +1,7 @@
 /* Base */
 
 :root {
+  color-scheme: light dark;
   --ink: #1d2928;
   --muted: #60706d;
   --paper: #fbfbf8;
@@ -8,7 +9,29 @@
   --accent: #24665c;
   --accent-dark: #17453e;
   --pale: #edf3f0;
+  --header-bg: rgba(251, 251, 248, .96);
+  --hero-text: #3d4c49;
+  --underline: #a7c4bd;
+  --selection-bg: #d9e7e2;
+  --button-text: #fff;
   --max: 1000px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e7ece9;
+    --muted: #93a29d;
+    --paper: #141917;
+    --line: #323e3a;
+    --accent: #4fbfa6;
+    --accent-dark: #7fe0c8;
+    --pale: #1c2422;
+    --header-bg: rgba(20, 25, 23, .92);
+    --hero-text: #b9c6c1;
+    --underline: #3a5850;
+    --selection-bg: #20342e;
+    --button-text: #0c1211;
+  }
 }
 
 * {
@@ -43,7 +66,7 @@ a {
   color: var(--accent);
   text-underline-offset: .2em;
   text-decoration-thickness: 1px;
-  text-decoration-color: #a7c4bd;
+  text-decoration-color: var(--underline);
   transition: color .15s ease, background-color .15s ease, text-decoration-color .15s ease;
 }
 
@@ -53,7 +76,7 @@ a:hover {
 }
 
 ::selection {
-  background: #d9e7e2;
+  background: var(--selection-bg);
 }
 
 :focus-visible {
@@ -73,7 +96,7 @@ a:hover {
   top: 0;
   z-index: 10;
   border-bottom: 1px solid var(--line);
-  background: rgba(251, 251, 248, .96);
+  background: var(--header-bg);
   backdrop-filter: blur(8px);
 }
 
@@ -169,7 +192,7 @@ a:hover {
   max-width: 680px;
   margin: 1.4rem 0 0;
   font-size: 1rem;
-  color: #3d4c49;
+  color: var(--hero-text);
 }
 
 /* Content */
@@ -200,7 +223,7 @@ a:hover {
   display: inline-block;
   padding: .62rem 1rem;
   background: var(--accent);
-  color: #fff;
+  color: var(--button-text);
   text-decoration: none;
   font-size: .82rem;
   font-weight: 700;
@@ -210,7 +233,7 @@ a:hover {
 
 .button:hover {
   background: var(--accent-dark);
-  color: #fff;
+  color: var(--button-text);
 }
 
 .button-outline {
@@ -222,6 +245,7 @@ a:hover {
 .button-outline:hover {
   background: var(--accent-dark);
   border-color: var(--accent-dark);
+  color: var(--button-text);
 }
 
 .home-grid {
