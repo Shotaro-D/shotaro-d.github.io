@@ -472,13 +472,6 @@ a:hover {
   font-size: .8rem;
 }
 
-.note {
-  padding: 1.1rem 1.2rem;
-  background: var(--pale);
-  border-left: 3px solid var(--accent);
-  font-size: .85rem;
-}
-
 /* Footer */
 
 .footer {
