@@ -307,6 +307,10 @@ a:hover {
   letter-spacing: .08em;
 }
 
+.award-grid {
+  gap: 2.8rem;
+}
+
 .profile-photo {
   display: block;
   width: 100%;
@@ -439,8 +443,13 @@ a:hover {
   display: grid;
   grid-template-columns: 120px 1fr;
   gap: 1rem;
-  padding: 1rem 0;
+  padding: .7rem 0;
   border-top: 1px solid var(--line);
+}
+
+.award-list p {
+  margin: 0;
+  line-height: 1.45;
 }
 
 .award-list li:last-child {
