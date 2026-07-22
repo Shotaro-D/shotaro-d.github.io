@@ -117,6 +117,12 @@ a:hover {
   gap: 2rem;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+}
+
 .site-name {
   color: var(--ink);
   font-size: 1.04rem;
@@ -163,6 +169,42 @@ a:hover {
   background: transparent;
   border: 0;
   font: inherit;
+}
+
+.language-switch {
+  display: inline-flex;
+  align-items: center;
+  padding: .13rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: .68rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: .025em;
+}
+
+.language-switch a {
+  min-width: 2rem;
+  padding: .4rem .42rem;
+  border-radius: 999px;
+  color: var(--muted);
+  text-align: center;
+  text-decoration: none;
+}
+
+.language-switch a:hover {
+  color: var(--accent-dark);
+}
+
+.language-switch a[aria-current="page"] {
+  background: var(--accent);
+  color: var(--button-text);
+  box-shadow: 0 2px 7px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.language-switch a:active {
+  transform: scale(.94);
 }
 
 .sr-only {
@@ -563,6 +605,10 @@ a:hover {
     min-height: 70px;
   }
 
+  .header-actions {
+    gap: .35rem;
+  }
+
   .menu-button {
     display: block;
     color: var(--ink);
@@ -673,6 +719,18 @@ a:hover {
     grid-template-columns: 1fr;
     gap: .1rem;
   }
+  .site-name {
+    font-size: .94rem;
+  }
+
+  .site-name small {
+    font-size: .64rem;
+  }
+
+  .language-switch a {
+    min-width: 1.8rem;
+    padding-inline: .34rem;
+  }
 }
 
 /* Print */
@@ -680,6 +738,7 @@ a:hover {
 @media print {
   .site-header,
   .menu-button,
+  .language-switch,
   .button {
     display: none;
   }
