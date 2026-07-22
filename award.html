@@ -16,6 +16,9 @@
   <meta name="theme-color" content="#141917" media="(prefers-color-scheme: dark)">
   <meta name="description" content="段上翔太郎の受賞">
   <link rel="canonical" href="https://shotaro-d.github.io/award.html">
+  <link rel="alternate" hreflang="ja" href="https://shotaro-d.github.io/award.html">
+  <link rel="alternate" hreflang="en" href="https://shotaro-d.github.io/en/award.html">
+  <link rel="alternate" hreflang="x-default" href="https://shotaro-d.github.io/award.html">
 
   <title>受賞 | 段上翔太郎</title>
   <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
@@ -28,6 +31,7 @@
   <meta property="og:url" content="https://shotaro-d.github.io/award.html">
   <meta property="og:image" content="https://shotaro-d.github.io/assets/images/face.jpg">
   <meta property="og:locale" content="ja_JP">
+  <meta property="og:locale:alternate" content="en_US">
   <meta name="twitter:card" content="summary">
 </head>
 
@@ -35,16 +39,23 @@
   <header class="site-header">
     <div class="container header-inner">
       <a class="site-name" href="index.html">段上 翔太郎<small>Shotaro Danjo</small></a>
-      <button class="menu-button" type="button" aria-expanded="false" aria-controls="nav">メニュー<span class="sr-only">を開く</span></button>
+      <div class="header-actions">
+        <nav id="nav" class="nav" aria-label="メインメニュー">
+          <a href="index.html">Home</a>
+          <a href="profile.html">Profile</a>
+          <a href="publications.html">Publication</a>
+          <a href="presentations.html">Conference</a>
+          <a aria-current="page" href="award.html">Award</a>
+          <a href="resources.html">Others</a>
+        </nav>
 
-      <nav id="nav" class="nav" aria-label="メインメニュー">
-        <a href="index.html">Home</a>
-        <a href="profile.html">Profile</a>
-        <a href="publications.html">Publication</a>
-        <a href="presentations.html">Conference</a>
-        <a aria-current="page" href="award.html">Award</a>
-        <a href="resources.html">Others</a>
-      </nav>
+        <button class="menu-button" type="button" aria-expanded="false" aria-controls="nav">メニュー<span class="sr-only">を開く</span></button>
+
+        <nav class="language-switch" aria-label="言語選択">
+          <a aria-current="page" lang="ja" href="award.html">JP</a>
+          <a lang="en" hreflang="en" href="en/award.html">EN</a>
+        </nav>
+      </div>
     </div>
   </header>
 
