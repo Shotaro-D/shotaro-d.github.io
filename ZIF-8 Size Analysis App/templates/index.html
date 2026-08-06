@@ -97,14 +97,14 @@
                 <input id="scaleMarkerInput" type="number" min="0.000001" step="any" inputmode="decimal">
               </label>
               <label>
-                <span>検出長（px）</span>
+                <span>検出長（px，BMPは自動）</span>
                 <input id="scalePixelsInput" type="number" min="0.000001" step="any" inputmode="decimal">
               </label>
             </div>
             <label class="scale-note-label" for="scaleVerificationNote">確認メモ</label>
             <input id="scaleVerificationNote" type="text" placeholder="例：画像右下の1000 nmバーを確認">
             <button id="verifyScaleButton" class="button button-secondary" type="button">この校正を確認・保存</button>
-            <p class="manual-note">値を変更した場合はmanual overrideとして記録し，全粒子のnm値を再計算します。</p>
+            <p class="manual-note">BMPではバー表示値（nm）のみを入力してください。バー長は画像から自動検出します。校正値はmanual overrideとして記録し，全粒子のnm値を再計算します。</p>
           </details>
         </section>
 

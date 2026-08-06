@@ -28,6 +28,9 @@ def test_browser_reads_and_saves_user_files_without_uploading_them():
     assert "inspectLocalImage" in manual_javascript
     assert "decodeLocalRaster" in manual_javascript
     assert "tif|tiff|bmp" in manual_javascript
+    assert "automaticallyDetectBmpScaleBar" in manual_javascript
+    assert "manual_marker_with_auto_detected_scale_bar" in manual_javascript
+    assert "BMPではバー表示値（nm）のみを入力してください。" in html
     assert manual_javascript.count("fetch(") == 1
     assert 'fetch(url, { credentials: "same-origin" })' in manual_javascript
     assert 'dom.manualCanvasMessage.hidden = true;' in manual_javascript

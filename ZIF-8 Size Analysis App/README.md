@@ -30,7 +30,7 @@
 - `shape_statistics_by_shape.csv`：1行をMLZIFフォルダとし，形状ごとにAverage，standard deviation，CV，Countsの列を作成する。
 - サイズ分布PNG：個数基準ヒストグラム，正規分布フィット線，Average，1σ，CV，D50を表示する。
 
-粒径は各画像のJSONに保存された`equivalent_diameter_nm`を使用する。TIFFではTIFFタグ／Hitachi TXT／画像内スケールバーの既存校正を使用し，BMPではBMPに画像メタデータがない場合があるため，隣接TXTまたは画面上の手動校正値を使用する。この集計でも，画像，TXT，JSON，粒径データをサーバーへ送信しない。
+粒径は各画像のJSONに保存された`equivalent_diameter_nm`を使用する。TIFFではTIFFタグ／Hitachi TXT／画像内スケールバーの既存校正を使用する。BMPでは画像メタデータを使用せず，隣接TXT，確認済みJSON，または使用者が入力したバー表示値を用いる。後者では，画像右下のスケールバー長を自動検出して`nm/px`を算出する。この集計でも，画像，TXT，JSON，粒径データをサーバーへ送信しない。
 
 主な操作は次のとおりである。
 
