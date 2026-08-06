@@ -1547,3 +1547,167 @@
     box-shadow: 0 12px 28px rgba(8, 20, 18, 0.4);
   }
 }
+
+/* Follow the operating system setting without storing a per-user preference. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --canvas: #101716;
+    --surface: #18211f;
+    --surface-muted: #212c29;
+    --ink: #e5eeeb;
+    --ink-soft: #b1c0bc;
+    --ink-faint: #8d9c98;
+    --line: #354541;
+    --line-strong: #4a5b57;
+    --teal: #50c2b7;
+    --teal-dark: #7cddd3;
+    --teal-soft: #173d38;
+    --model: #58ddd3;
+    --approved: #6dcea6;
+    --approved-soft: #173b2c;
+    --rejected: #ef9690;
+    --rejected-soft: #482728;
+    --uncertain: #e7c166;
+    --uncertain-soft: #46391c;
+    --pending: #a3b0ac;
+    --pending-soft: #2a3532;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.22), 0 12px 34px rgba(0, 0, 0, 0.2);
+  }
+
+  body {
+    background:
+      linear-gradient(180deg, rgba(93, 157, 146, 0.08), rgba(16, 23, 22, 0) 260px),
+      var(--canvas);
+  }
+
+  .app-header {
+    background: rgba(24, 33, 31, 0.94);
+  }
+
+  .auth-shell {
+    background: radial-gradient(circle at top left, #19443e, transparent 42%), var(--canvas);
+  }
+
+  .auth-card,
+  .manual-summary-item,
+  .manual-shortcut-popover,
+  .manual-dialog {
+    background: var(--surface);
+  }
+
+  .button,
+  .auth-form input,
+  .scale-adjustment input,
+  .manual-text-input,
+  .manual-notes,
+  .manual-tiff-row,
+  .manual-tiff-current,
+  .manual-tiff-not-analyzed,
+  .manual-tiff-scale-unverified,
+  .size-distribution-card img,
+  .particle-item,
+  .decision-button,
+  .pose-mode-button.is-active {
+    background: var(--surface);
+  }
+
+  .button:hover:not(:disabled) {
+    border-color: #6d807b;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+  }
+
+  .summary-card-accent {
+    background: linear-gradient(145deg, var(--surface), var(--teal-soft));
+    border-color: #39736c;
+  }
+
+  .particle-item[aria-selected="true"] {
+    border-color: #3f978d;
+  }
+
+  .switch-track { background: #63736f; }
+  .switch-track span { background: #e7efec; }
+
+  .pose-source-badge.source-automatic {
+    color: #c2d1cd;
+    background: #2a3734;
+  }
+
+  .pose-editor {
+    background: linear-gradient(145deg, rgba(23, 61, 56, 0.8), rgba(33, 44, 41, 0.95));
+    border-color: #39736c;
+    box-shadow: inset 0 1px 0 rgba(229, 238, 235, 0.08);
+  }
+
+  .pose-score-status,
+  .pose-score-grid > div {
+    background: var(--surface);
+    border-color: var(--line-strong);
+  }
+
+  .pose-mode-switch { background: rgba(229, 238, 235, 0.08); }
+  .score-track { background: #3d4c48; }
+  .score-track span { background: #9aa9a5; }
+  .score-component,
+  .metrics-grid > div { border-color: var(--line); }
+
+  .manual-scale-summary,
+  .manual-shortcut-toggle,
+  .size-distribution-download {
+    border-color: #39736c;
+  }
+
+  .manual-shortcut-toggle:hover,
+  .manual-shortcut-toggle:focus-visible {
+    background: #23574f;
+  }
+
+  .shape-choice[data-shape="chamfered_cube"].is-selected,
+  .manual-particle-row.is-selected[data-shape="chamfered_cube"] {
+    color: #ffd1a3;
+    background: #432d1a;
+    border-color: #de8c49;
+    box-shadow: inset 0 0 0 1px #de8c49;
+  }
+
+  .shape-choice[data-shape="cube"].is-selected,
+  .manual-particle-row.is-selected[data-shape="cube"] {
+    color: #d8c1ff;
+    background: #342746;
+    border-color: #ab84e5;
+    box-shadow: inset 0 0 0 1px #ab84e5;
+  }
+
+  .manual-particle-row.is-excluded { background: #2a3431; }
+  .manual-particle-row.is-excluded.is-selected { border-color: #a28a45; }
+
+  .manual-badge.is-warning,
+  .manual-warning,
+  .ambiguity-notice,
+  .size-distribution-skipped {
+    color: #f0cc78;
+    background: #46391c;
+    border-color: #866e31;
+  }
+
+  .manual-tiff-directory-header { background: #273532; }
+  .manual-tiff-directory-header:hover { background: #32433f; }
+  .manual-tiff-analyzed {
+    color: #8ee0b9;
+    background: #173b2c;
+    border-color: #3e8966;
+  }
+  .manual-tiff-scale-verified {
+    color: #f0cd79;
+    background: #46391c;
+    border-color: #866e31;
+  }
+
+  .manual-delete-button { border-color: #98504e; }
+
+  .auth-status.is-error,
+  .quality-flag-list { color: #e89dce; }
+
+  .manual-dialog::backdrop { background: rgba(0, 0, 0, 0.58); }
+}
