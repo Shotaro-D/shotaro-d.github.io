@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Authenticated ZIF-8 SEM particle-size analysis">
+  <title>ZIF-8 Size Analysis App</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">ZIF-8 · SEM ANALYSIS</p>
+        <h1>Shape Statistics</h1>
+        <p class="lead">解析フォルダを選択し，保存済みのJSONセッションから形状別の粒径統計をブラウザー内で計算します。</p>
+      </div>
+      <div id="userArea" class="user-area" hidden>
+        <span id="userEmail"></span>
+        <button id="logoutButton" class="button button-quiet" type="button">ログアウト</button>
+      </div>
+    </header>
+
+    <section id="loginView" class="card auth-card" hidden>
+      <p class="eyebrow">AUTHENTICATED ACCESS</p>
+      <h2>ログイン</h2>
+      <p class="muted">発行されたメールアドレスとパスワードを入力してください。認証は日本時間の日付が変わるまで有効です。</p>
+      <form id="loginForm" class="stack-form">
+        <label>メールアドレス<input id="emailInput" name="email" type="email" autocomplete="username" required></label>
+        <label>パスワード<input id="passwordInput" name="password" type="password" autocomplete="current-password" required></label>
+        <button class="button button-primary" type="submit">認証して開始</button>
+      </form>
+      <p id="loginStatus" class="status" role="status" aria-live="polite"></p>
+    </section>
+
+    <section id="appView" hidden>
+      <section class="card step-card">
+        <div class="step-number">01</div>
+        <div class="step-content">
+          <p class="eyebrow">INPUT FOLDER</p>
+          <h2>解析フォルダを選択</h2>
+          <p class="muted">TIFF，TXT，JPEG，JSONなどを含むフォルダを選択してください。選択したファイルは使用者のブラウザー内だけで読み込み，サーバーへは送信しません。</p>
+          <label class="folder-picker" for="folderInput">
+            <span class="folder-icon" aria-hidden="true">＋</span>
+            <span><strong>ローカルフォルダを選択</strong><small>ファイルはこのブラウザー内で処理されます</small></span>
+            <input id="folderInput" type="file" webkitdirectory directory multiple>
+          </label>
+          <p id="selectionStatus" class="status" role="status" aria-live="polite">フォルダが選択されていません。</p>
+        </div>
+      </section>
+
+      <section id="inventoryCard" class="card step-card" hidden>
+        <div class="step-number">02</div>
+        <div class="step-content">
+          <p class="eyebrow">FILE INVENTORY</p>
+          <h2>読み込み内容を確認</h2>
+          <div id="inventoryGrid" class="inventory-grid"></div>
+          <p id="inventoryStatus" class="status" role="status" aria-live="polite"></p>
+          <button id="analyseButton" class="button button-primary" type="button" disabled>解析開始</button>
+        </div>
+      </section>
+
+      <section id="resultCard" class="card step-card result-card" hidden>
+        <div class="step-number">03</div>
+        <div class="step-content">
+          <div class="result-heading">
+            <div>
+              <p class="eyebrow">RESULT</p>
+              <h2>形状別粒径統計</h2>
+            </div>
+            <a id="downloadButton" class="button button-secondary" href="#" hidden>CSVをダウンロード</a>
+          </div>
+          <p id="resultSummary" class="muted"></p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Shape</th><th>Average diameter</th><th>standard deviation</th><th>CV</th><th>Counts</th></tr></thead>
+              <tbody id="resultTableBody"></tbody>
+            </table>
+          </div>
+          <details class="used-files">
+            <summary>使用したJSONファイル</summary>
+            <ul id="usedFiles"></ul>
+          </details>
+        </div>
+      </section>
+    </section>
+
+    <footer>
+      <span>Private analysis workspace</span>
+      <span>Session expires at the end of the day (JST)</span>
+    </footer>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="{{ url_for('static', filename='analysis.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>

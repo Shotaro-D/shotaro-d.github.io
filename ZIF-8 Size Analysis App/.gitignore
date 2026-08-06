@@ -1,0 +1,20 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.DS_Store
+
+# Never commit authentication secrets or uploaded analysis data.
+.env
+instance/*
+!instance/.gitkeep
+users.json
+*.tif
+*.tiff
+*.txt
+*.jpg
+*.jpeg
+*.csv
+*.json
+!requirements.txt
+!instance/.gitkeep

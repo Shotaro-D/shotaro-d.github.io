@@ -1,0 +1,16 @@
+[project]
+name = "zif8-size-analysis-app"
+version = "0.1.0"
+description = "Authenticated web application for ZIF-8 SEM shape statistics"
+requires-python = ">=3.10"
+dependencies = [
+  "Flask>=3.0,<4",
+  "gunicorn>=23,<24",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7,<9"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
