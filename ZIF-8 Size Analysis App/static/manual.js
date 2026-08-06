@@ -97,6 +97,11 @@ const SCALE_BAR_AUTO_DETECTION_MIN_CONFIDENCE = 0.65;
 // The BMP footer can include a long white scale bar.  A footer row is still
 // valid when up to 35% of its width is occupied by that overlay.
 const FOOTER_DARK_FRACTION_MIN = 0.65;
+const LOCAL_DIRECTORY_DATABASE_NAME = "zif8-manual-local-directory";
+const LOCAL_DIRECTORY_DATABASE_VERSION = 1;
+const LOCAL_DIRECTORY_STORE_NAME = "handles";
+const LOCAL_DIRECTORY_RECORD_KEY = "active-directory";
+const LOCAL_DIRECTORY_LAST_IMAGE_KEY = "zif8-manual-last-image";
 
 const state = {
   session: null,
@@ -131,6 +136,9 @@ const state = {
   localJsonFilesByName: new Map(),
   localSessionIndexReady: false,
   localDirectoryHandle: null,
+  savedLocalDirectoryHandle: null,
+  savedLocalDirectoryName: "",
+  pendingRestoredImagePath: null,
   currentImageFile: null,
   currentImageBuffer: null,
   currentImageHash: "",
@@ -157,10 +165,19 @@ async function startManualApp() {
     state.meshes = meshPayload.meshes || {};
     state.chamferedMeshes = meshPayload.chamfered_meshes || {};
     setConnection("online", "ローカルのみ");
-    dom.manualCanvasMessage.querySelector(".spinner").hidden = true;
-    dom.manualCanvasMessage.querySelector("span:last-child").textContent = "ローカルフォルダからTIFF／BMPを選択してください。";
-    dom.manualCanvasMessage.classList.remove("is-error");
-    dom.manualCanvasMessage.hidden = false;
+    const restoration = await restorePreviousLocalDirectory();
+    if (restoration === "reconnect") {
+      dom.openTiffButton.textContent = "前回のフォルダを再接続";
+      dom.manualCanvasMessage.querySelector(".spinner").hidden = true;
+      dom.manualCanvasMessage.querySelector("span:last-child").textContent = `前回のローカルフォルダ「${state.savedLocalDirectoryName}」は，このブラウザーで再接続できます。`;
+      dom.manualCanvasMessage.classList.remove("is-error");
+      dom.manualCanvasMessage.hidden = false;
+    } else if (restoration !== "restored") {
+      dom.manualCanvasMessage.querySelector(".spinner").hidden = true;
+      dom.manualCanvasMessage.querySelector("span:last-child").textContent = "ローカルフォルダからTIFF／BMPを選択してください。";
+      dom.manualCanvasMessage.classList.remove("is-error");
+      dom.manualCanvasMessage.hidden = false;
+    }
   } catch (error) {
     setConnection("error", "読込失敗");
     dom.manualCanvasMessage.querySelector(".spinner").hidden = true;
@@ -195,10 +212,15 @@ function cacheDom() {
 
 function bindEvents() {
   dom.openTiffButton.addEventListener("click", () => {
-    if (!state.localFiles.length) selectLocalFolder();
+    if (!state.localFiles.length && state.savedLocalDirectoryHandle) reconnectSavedLocalFolder();
+    else if (!state.localFiles.length) selectLocalFolder();
     else openTiffDialog();
   });
-  dom.folderInput.addEventListener("change", (event) => setLocalFiles(Array.from(event.target.files || [])));
+  dom.folderInput.addEventListener("change", (event) => {
+    setLocalFiles(Array.from(event.target.files || [])).catch((error) => {
+      toast(`ローカルフォルダを読み込めません：${error.message}`, true);
+    });
+  });
   dom.reloadButton.addEventListener("click", () => window.location.reload());
   dom.importJsonButton.addEventListener("click", () => dom.importJsonInput.click());
   dom.importJsonInput.addEventListener("change", importJsonFile);
@@ -366,6 +388,159 @@ async function collectLocalDirectoryFiles(directoryHandle, prefix = "") {
   return entries;
 }
 
+function openLocalDirectoryDatabase() {
+  if (!window.indexedDB) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const request = window.indexedDB.open(LOCAL_DIRECTORY_DATABASE_NAME, LOCAL_DIRECTORY_DATABASE_VERSION);
+    request.onupgradeneeded = () => {
+      const database = request.result;
+      if (!database.objectStoreNames.contains(LOCAL_DIRECTORY_STORE_NAME)) {
+        database.createObjectStore(LOCAL_DIRECTORY_STORE_NAME, { keyPath: "id" });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = request.onblocked = () => resolve(null);
+  });
+}
+
+function indexedDbResult(request) {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("ブラウザー保存を読み書きできませんでした。"));
+  });
+}
+
+function indexedDbTransactionResult(transaction) {
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = transaction.onabort = () => reject(transaction.error || new Error("ブラウザー保存を完了できませんでした。"));
+  });
+}
+
+async function readSavedLocalDirectory() {
+  const database = await openLocalDirectoryDatabase();
+  if (!database) return null;
+  try {
+    const transaction = database.transaction(LOCAL_DIRECTORY_STORE_NAME, "readonly");
+    return await indexedDbResult(transaction.objectStore(LOCAL_DIRECTORY_STORE_NAME).get(LOCAL_DIRECTORY_RECORD_KEY));
+  } catch (_) {
+    return null;
+  } finally {
+    database.close();
+  }
+}
+
+async function persistLocalDirectoryHandle(directoryHandle) {
+  state.savedLocalDirectoryHandle = directoryHandle || null;
+  state.savedLocalDirectoryName = String(directoryHandle?.name || "");
+  if (!directoryHandle) return false;
+  const database = await openLocalDirectoryDatabase();
+  if (!database) return false;
+  try {
+    const transaction = database.transaction(LOCAL_DIRECTORY_STORE_NAME, "readwrite");
+    transaction.objectStore(LOCAL_DIRECTORY_STORE_NAME).put({
+      id: LOCAL_DIRECTORY_RECORD_KEY,
+      directoryHandle,
+      name: state.savedLocalDirectoryName,
+      saved_at: new Date().toISOString(),
+    });
+    await indexedDbTransactionResult(transaction);
+    return true;
+  } catch (_) {
+    return false;
+  } finally {
+    database.close();
+  }
+}
+
+function readLastLocalImagePath() {
+  try {
+    return window.localStorage.getItem(LOCAL_DIRECTORY_LAST_IMAGE_KEY) || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function persistLastLocalImagePath(imageFile) {
+  if (!imageFile) return;
+  try {
+    window.localStorage.setItem(LOCAL_DIRECTORY_LAST_IMAGE_KEY, normalisedFilePath(imageFile));
+  } catch (_) {
+    // The current folder can still be restored when this convenience key is unavailable.
+  }
+}
+
+function clearLastLocalImagePath() {
+  try {
+    window.localStorage.removeItem(LOCAL_DIRECTORY_LAST_IMAGE_KEY);
+  } catch (_) {
+    // Ignore unavailable browser storage.
+  }
+}
+
+async function directoryPermission(directoryHandle, requestPermission = false) {
+  if (!directoryHandle) return "denied";
+  const options = { mode: "readwrite" };
+  try {
+    let permission = typeof directoryHandle.queryPermission === "function"
+      ? await directoryHandle.queryPermission(options)
+      : "prompt";
+    if (permission !== "granted" && requestPermission && typeof directoryHandle.requestPermission === "function") {
+      permission = await directoryHandle.requestPermission(options);
+    }
+    return permission;
+  } catch (_) {
+    return "denied";
+  }
+}
+
+async function loadLocalDirectoryHandle(directoryHandle, options = {}) {
+  const entries = await collectLocalDirectoryFiles(directoryHandle);
+  const pathMap = new Map(entries.map((entry) => [entry.file, entry.relativePath]));
+  await setLocalFiles(entries.map((entry) => entry.file), {
+    directoryHandle,
+    pathMap,
+    restoreImagePath: options.restoreImagePath || null,
+  });
+}
+
+async function restorePreviousLocalDirectory() {
+  const record = await readSavedLocalDirectory();
+  const directoryHandle = record?.directoryHandle;
+  if (!directoryHandle) return "none";
+  state.savedLocalDirectoryHandle = directoryHandle;
+  state.savedLocalDirectoryName = String(record.name || directoryHandle.name || "前回のフォルダ");
+  if (await directoryPermission(directoryHandle) !== "granted") return "reconnect";
+  try {
+    const restoreImagePath = readLastLocalImagePath();
+    await loadLocalDirectoryHandle(directoryHandle, { restoreImagePath });
+    if (restoreImagePath && state.selectedImageId === restoreImagePath) await openSelectedTiff();
+    return "restored";
+  } catch (error) {
+    toast(`前回のローカルフォルダを復元できません：${error.message}`, true);
+    return "reconnect";
+  }
+}
+
+async function reconnectSavedLocalFolder() {
+  const directoryHandle = state.savedLocalDirectoryHandle;
+  if (!directoryHandle) return selectLocalFolder();
+  dom.openTiffButton.disabled = true;
+  try {
+    if (await directoryPermission(directoryHandle, true) !== "granted") {
+      throw new Error("前回のフォルダへのアクセスが許可されませんでした。");
+    }
+    const restoreImagePath = readLastLocalImagePath();
+    await loadLocalDirectoryHandle(directoryHandle, { restoreImagePath });
+    if (restoreImagePath && state.selectedImageId === restoreImagePath) await openSelectedTiff();
+    dom.openTiffButton.textContent = "ローカルフォルダを選択";
+  } catch (error) {
+    toast(`前回のローカルフォルダを再接続できません：${error.message}`, true);
+  } finally {
+    dom.openTiffButton.disabled = false;
+  }
+}
+
 async function selectLocalFolder() {
   if (typeof window.showDirectoryPicker !== "function") {
     dom.folderInput.click();
@@ -374,9 +549,10 @@ async function selectLocalFolder() {
   dom.openTiffButton.disabled = true;
   try {
     const directoryHandle = await window.showDirectoryPicker({ mode: "readwrite" });
-    const entries = await collectLocalDirectoryFiles(directoryHandle);
-    const pathMap = new Map(entries.map((entry) => [entry.file, entry.relativePath]));
-    setLocalFiles(entries.map((entry) => entry.file), { directoryHandle, pathMap });
+    clearLastLocalImagePath();
+    await persistLocalDirectoryHandle(directoryHandle);
+    await loadLocalDirectoryHandle(directoryHandle);
+    dom.openTiffButton.textContent = "ローカルフォルダを選択";
   } catch (error) {
     if (error?.name !== "AbortError") {
       toast(`ローカルフォルダを読み込めません：${error.message}`, true);
@@ -471,6 +647,7 @@ function localImageInventory() {
 
 function setLocalFiles(files, options = {}) {
   state.localDirectoryHandle = options.directoryHandle || null;
+  state.pendingRestoredImagePath = options.restoreImagePath || null;
   state.localFilePaths = new WeakMap();
   state.localFiles = files.filter((file) => file && file.name);
   for (const file of state.localFiles) {
@@ -501,11 +678,12 @@ function setLocalFiles(files, options = {}) {
   dom.manualCanvasMessage.classList.remove("is-error");
   dom.manualCanvasMessage.querySelector(".spinner").hidden = false;
   dom.manualCanvasMessage.querySelector("span:last-child").textContent = "ローカルTIFF／BMPと対応JSONを読み込んでいます。";
-  loadTiffInventory(false).catch((error) => {
+  return loadTiffInventory(false).catch((error) => {
     dom.manualCanvasMessage.classList.add("is-error");
     dom.manualCanvasMessage.querySelector(".spinner").hidden = true;
     dom.manualCanvasMessage.querySelector("span:last-child").textContent = `画像一覧を作成できません：${error.message}`;
     toast(`画像一覧を作成できません：${error.message}`, true);
+    throw error;
   });
 }
 
@@ -1946,6 +2124,7 @@ async function writableLocalDirectory(relativeDirectory = "", options = {}) {
     }
     directoryHandle = await window.showDirectoryPicker({ mode: "readwrite" });
     state.localDirectoryHandle = directoryHandle;
+    await persistLocalDirectoryHandle(directoryHandle);
   }
   const permissionOptions = { mode: "readwrite" };
   let permission = typeof directoryHandle.queryPermission === "function"
@@ -2294,9 +2473,12 @@ async function loadTiffInventory(refresh) {
   const endpoint = refresh ? "/api/manual/images/refresh" : "/api/manual/images";
   const result = await apiJson(endpoint, refresh ? { method: "POST" } : {});
   state.availableImages = result.images || [];
+  const restoredImageId = state.pendingRestoredImagePath;
   state.selectedImageId = result.current_image_id
+    || (state.availableImages.some((item) => item.image_id === restoredImageId) ? restoredImageId : null)
     || state.availableImages[0]?.image_id
     || null;
+  state.pendingRestoredImagePath = null;
   const groupedImages = groupTiffImagesByDirectory(state.availableImages);
   const availableDirectories = new Set(groupedImages.map((group) => group.directory));
   state.openTiffDirectories = new Set(
@@ -2548,6 +2730,7 @@ async function openSelectedTiff() {
     validateTiffRaster(image, session);
     state.session = session;
     state.image = image;
+    persistLastLocalImagePath(imageFile);
     state.working = null;
     state.workingId = null;
     state.workingOriginal = null;
