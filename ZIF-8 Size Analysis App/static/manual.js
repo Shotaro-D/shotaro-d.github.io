@@ -22,6 +22,7 @@ import { decodeTiff } from "./tiff_decoder.js";
 import { detectLocalScaleMarker as detectScaleMarker } from "./manual_scale.js";
 import { isExcludedLocalPath } from "./manual_local_paths.js";
 import { createManualState } from "./manual_state.js";
+import { numberStats } from "./manual_statistics.js";
 
 const SHAPE_LABELS = {
   rhombic_dodecahedron: "Rhombic dodecahedron",
@@ -86,7 +87,7 @@ const SHAPE_COLORS = {
 };
 
 const ROTATION_RADIANS_PER_PIXEL = 0.0105;
-const INTERACTION_HELP_TEXT = "通常ドラッグ＝3D回転，X／Y／Z＋ドラッグ＝各モデル軸回転，Shift＋ドラッグ＝移動，Option＋ドラッグ＝2D回転です。人差し指ホイール＝図形サイズ（Shiftで画像ズーム），親指ホイール＝画像ズームです。";
+const INTERACTION_HELP_TEXT = "通常ドラッグ＝3D回転，X／Y／Z＋ドラッグ＝各モデル軸回転，Shift＋ドラッグ＝移動，Option＋ドラッグ＝2D回転です。ホイール＝図形サイズ，Shift／Ctrl／⌘＋ホイール＝画像ズームです。";
 const PARTICLE_NUMBER_PREFERENCE_KEY = "manual-sem-show-particle-numbers";
 const SCALE_BAR_AUTO_DETECTION_MIN_CONFIDENCE = 0.65;
 // The BMP footer can include a long white scale bar.  A footer row is still
@@ -96,6 +97,10 @@ const LOCAL_DIRECTORY_DATABASE_VERSION = 1;
 const LOCAL_DIRECTORY_STORE_NAME = "handles";
 const LOCAL_DIRECTORY_RECORD_KEY = "active-directory";
 const LOCAL_DIRECTORY_LAST_IMAGE_KEY = "zif8-manual-last-image";
+const LOCAL_SESSION_STORAGE_PREFIX = "zif8-manual-session:";
+const LOCAL_SESSION_STORAGE_INDEX_KEY = "zif8-manual-session-index";
+const LOCAL_SESSION_STORAGE_TARGET_BYTES = 4 * 1024 * 1024;
+const LOCAL_SESSION_STORAGE_MAX_ENTRIES = 50;
 
 const state = createManualState();
 
@@ -290,13 +295,6 @@ function setShortcutPanelOpen(isOpen) {
   dom.shortcutPanel.classList.toggle("is-open", state.shortcutsOpen);
   if (state.shortcutsOpen) dom.shortcutCloseButton.focus({ preventScroll: true });
   requestDraw();
-}
-
-async function apiJson(url, options = {}) {
-  if (url.startsWith("/api/manual/")) {
-    return localManualApi(url, options);
-  }
-  throw new Error(`サーバーへ送信する解析APIは許可されていません：${url}`);
 }
 
 async function loadStaticMeshes() {
@@ -604,10 +602,12 @@ function localImageInventory() {
       mean_diameter_nm: summary.mean_diameter_nm,
       std_diameter_nm: summary.std_diameter_nm,
       cv_percent: summary.cv_percent,
-      diameter_sum_nm: summary.mean_diameter_nm == null ? null : Number(summary.mean_diameter_nm) * includedCount,
-      diameter_sum_sq_nm2: summary.mean_diameter_nm == null || summary.std_diameter_nm == null
-        ? null
-        : includedCount * (Number(summary.std_diameter_nm) ** 2 + Number(summary.mean_diameter_nm) ** 2),
+      diameter_sum_nm: Number.isFinite(Number(summary.diameter_sum_nm))
+        ? Number(summary.diameter_sum_nm)
+        : null,
+      diameter_sum_sq_nm2: Number.isFinite(Number(summary.diameter_sum_sq_nm2))
+        ? Number(summary.diameter_sum_sq_nm2)
+        : null,
     };
   });
 }
@@ -1029,7 +1029,7 @@ async function sha256Hex(arrayBuffer) {
 }
 
 function localStorageKey(imageHash) {
-  return `zif8-manual-session:${imageHash}`;
+  return `${LOCAL_SESSION_STORAGE_PREFIX}${imageHash}`;
 }
 
 function readLocalStoredSession(imageHash) {
@@ -1039,6 +1039,56 @@ function readLocalStoredSession(imageHash) {
   } catch (_) {
     return null;
   }
+}
+
+function readLocalSessionStorageIndex() {
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(LOCAL_SESSION_STORAGE_INDEX_KEY) || "{}");
+    return stored && typeof stored === "object" && !Array.isArray(stored) ? stored : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function localSessionStorageRecords() {
+  const index = readLocalSessionStorageIndex();
+  const records = new Map();
+  for (let position = 0; position < window.localStorage.length; position += 1) {
+    const key = window.localStorage.key(position);
+    if (!key || !key.startsWith(LOCAL_SESSION_STORAGE_PREFIX)) continue;
+    const text = window.localStorage.getItem(key) || "";
+    const metadata = index[key] || {};
+    records.set(key, {
+      bytes: Number.isFinite(Number(metadata.bytes)) ? Number(metadata.bytes) : text.length * 2,
+      updatedAt: Number.isFinite(Number(metadata.updatedAt)) ? Number(metadata.updatedAt) : 0,
+    });
+  }
+  return records;
+}
+
+function writeLocalSessionStorageIndex(records) {
+  const serializable = Object.fromEntries(records);
+  window.localStorage.setItem(LOCAL_SESSION_STORAGE_INDEX_KEY, JSON.stringify(serializable));
+}
+
+function evictOldLocalSessions(currentKey, incomingBytes) {
+  const records = localSessionStorageRecords();
+  const current = records.get(currentKey);
+  let totalBytes = [...records.values()].reduce((total, record) => total + record.bytes, 0) - (current?.bytes || 0);
+  records.delete(currentKey);
+  const oldestFirst = () => [...records.entries()]
+    .sort(([leftKey, left], [rightKey, right]) => left.updatedAt - right.updatedAt || leftKey.localeCompare(rightKey));
+  let removed = 0;
+  while (records.size >= LOCAL_SESSION_STORAGE_MAX_ENTRIES || totalBytes + incomingBytes > LOCAL_SESSION_STORAGE_TARGET_BYTES) {
+    const [oldest] = oldestFirst();
+    if (!oldest) break;
+    const record = records.get(oldest);
+    window.localStorage.removeItem(oldest);
+    records.delete(oldest);
+    totalBytes -= record.bytes;
+    removed += 1;
+  }
+  return { records, removed };
 }
 
 function persistLocalSession() {
@@ -1058,26 +1108,38 @@ function persistLocalSession() {
     });
   }
   try {
-    window.localStorage.setItem(localStorageKey(state.currentImageHash), JSON.stringify(state.session));
+    const key = localStorageKey(state.currentImageHash);
+    const text = JSON.stringify(state.session);
+    const bytes = text.length * 2;
+    const { records, removed } = evictOldLocalSessions(key, bytes);
+    window.localStorage.setItem(key, text);
+    records.set(key, { bytes, updatedAt: Date.now() });
+    writeLocalSessionStorageIndex(records);
+    if (removed) {
+      toast(`ブラウザー保存の容量を確保するため，古いセッション${removed}件を削除しました。必要な記録はJSONとして書き出してください。`, true);
+    }
   } catch (_) {
-    // Browser storage is a convenience; explicit JSON export remains available.
+    toast("ブラウザー保存の容量が不足しています。以後の変更は自動保存されないため，直ちにJSONを書き出してください。", true);
   }
 }
 
 function localSummary(particles = []) {
   const all = Array.isArray(particles) ? particles : [];
   const included = all.filter((particle) => particle && particle.included_in_statistics !== false);
-  const values = included.map((particle) => Number(particle.equivalent_diameter_nm)).filter(Number.isFinite);
-  const mean = values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
-  const std = values.length ? Math.sqrt(values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length) : null;
+  const measured = included.filter((particle) => Number.isFinite(Number(particle.equivalent_diameter_nm)));
+  const values = measured.map((particle) => Number(particle.equivalent_diameter_nm));
+  const stats = numberStats(values);
   return {
-    count: values.length,
+    count: stats.count,
     total_saved_count: all.length,
     excluded_count: all.length - values.length,
-    mean_radius_nm: values.length ? included.reduce((sum, particle) => sum + Number(particle.equivalent_radius_nm || 0), 0) / values.length : null,
-    mean_diameter_nm: mean,
-    std_diameter_nm: std,
-    cv_percent: mean > 0 && std !== null ? 100 * std / mean : null,
+    mean_radius_nm: values.length ? measured.reduce((sum, particle) => sum + Number(particle.equivalent_radius_nm || 0), 0) / values.length : null,
+    mean_diameter_nm: stats.mean,
+    std_diameter_nm: stats.standardDeviation,
+    cv_percent: stats.cvPercent,
+    diameter_sum_nm: stats.sum,
+    diameter_sum_sq_nm2: stats.sumSquares,
+    standard_deviation_basis: "sample_n_minus_1",
     number_basis: true,
     shape_counts: Object.fromEntries(Object.keys(SHAPE_LABELS).map((shape) => [shape, included.filter((particle) => particle.shape === shape).length])),
   };
@@ -1113,34 +1175,6 @@ function compareLocalAnalysisRuns(left, right) {
   const leftKey = localAnalysisRunSortKey(left);
   const rightKey = localAnalysisRunSortKey(right);
   return leftKey[0] - rightKey[0] || leftKey[1].localeCompare(rightKey[1]);
-}
-
-function numberStats(values) {
-  const data = values.filter((value) => Number.isFinite(Number(value))).map(Number);
-  if (!data.length) {
-    return {
-      count: 0,
-      mean: null,
-      standardDeviation: null,
-      cvPercent: null,
-      median: null,
-    };
-  }
-  const mean = data.reduce((sum, value) => sum + value, 0) / data.length;
-  const variance = data.reduce((sum, value) => sum + (value - mean) ** 2, 0) / data.length;
-  const standardDeviation = Math.sqrt(Math.max(0, variance));
-  const sorted = [...data].sort((left, right) => left - right);
-  const middle = Math.floor(sorted.length / 2);
-  const median = sorted.length % 2
-    ? sorted[middle]
-    : (sorted[middle - 1] + sorted[middle]) / 2;
-  return {
-    count: data.length,
-    mean,
-    standardDeviation,
-    cvPercent: mean > 0 ? 100 * standardDeviation / mean : null,
-    median,
-  };
 }
 
 function collectLocalSizeDistributionRuns() {
@@ -1268,7 +1302,7 @@ function drawSizeDistributionPng(analysisRun, diameters) {
   const normalEnd = Math.max(normalStart + 1e-9, Math.max(...data) * 1.2);
   const normalValues = [];
   const normalSteps = 1000;
-  if (stats.standardDeviation > 0) {
+  if (Number.isFinite(stats.standardDeviation) && stats.standardDeviation > 0) {
     for (let index = 0; index <= normalSteps; index += 1) {
       const x = normalStart + (normalEnd - normalStart) * index / normalSteps;
       const z = (x - stats.mean) / stats.standardDeviation;
@@ -1435,7 +1469,7 @@ function drawSizeDistributionPng(analysisRun, diameters) {
   const statLines = [
     `n = ${stats.count.toLocaleString("en-US")}`,
     `Average = ${stats.mean.toFixed(1)} nm`,
-    `1σ = ${stats.standardDeviation.toFixed(1)} nm`,
+    `Sample SD = ${stats.standardDeviation == null ? "n/a" : `${stats.standardDeviation.toFixed(1)} nm`}`,
     `CV = ${cvText}`,
     `D50 = ${stats.median.toFixed(1)} nm`,
   ];
@@ -1480,7 +1514,7 @@ function createLocalSizeDistributionCsv(runRows, shapeKeys) {
     const label = SHAPE_LABELS[shape] || shape;
     columns.push(
       `${label} Average diameter (nm)`,
-      `${label} standard deviation (nm)`,
+      `${label} sample standard deviation (nm, n-1)`,
       `${label} CV (%)`,
       `${label} Counts`,
     );
@@ -1610,119 +1644,121 @@ async function createLocalSession(imageFile, image, imageHash) {
   return session;
 }
 
-async function localManualApi(url, options = {}) {
-  if (url === "/api/manual/images" || url === "/api/manual/images/refresh") {
-    const images = localImageInventory();
-    return { images, current_image_id: state.currentImageFile ? normalisedFilePath(state.currentImageFile) : null, index_path: "browser-local" };
+function localImageInventoryResponse() {
+  return {
+    images: localImageInventory(),
+    current_image_id: state.currentImageFile ? normalisedFilePath(state.currentImageFile) : null,
+    index_path: "browser-local",
+  };
+}
+
+async function refreshLocalSizeDistribution() {
+  if (!state.localFiles.length) throw new Error("先にローカルフォルダを選択してください。");
+  if (!state.localSessionIndexReady) await indexLocalSessions();
+  return createLocalSizeDistributionPayload();
+}
+
+function updateLocalCalibration(payload) {
+  const marker = Number(payload.marker_length_nm);
+  const automaticBmpMarker = isCurrentImageBmp() ? automaticallyDetectBmpScaleBar() : null;
+  const pixels = automaticBmpMarker
+    ? Number(automaticBmpMarker.detected_length_px)
+    : Number(payload.detected_length_px);
+  if (!(marker > 0) || !(pixels > 0)) {
+    throw new Error("バー表示値と検出長には正の数値を入力してください。");
   }
-  if (url === "/api/manual/size-distributions/refresh") {
-    if (!state.localFiles.length) throw new Error("先にローカルフォルダを選択してください。");
-    if (!state.localSessionIndexReady) await indexLocalSessions();
-    return createLocalSizeDistributionPayload();
-  }
-  if (url === "/api/manual/calibration") {
-    const payload = JSON.parse(options.body || "{}");
-    const marker = Number(payload.marker_length_nm);
-    const automaticBmpMarker = isCurrentImageBmp() ? automaticallyDetectBmpScaleBar() : null;
-    const pixels = automaticBmpMarker
-      ? Number(automaticBmpMarker.detected_length_px)
-      : Number(payload.detected_length_px);
-    if (!(marker > 0) || !(pixels > 0)) {
-      throw new Error("バー表示値と検出長には正の数値を入力してください。");
-    }
-    state.session.calibration = {
-      ...state.session.calibration,
-      source: "manual_override",
-      method: automaticBmpMarker ? "manual_marker_with_auto_detected_scale_bar" : "manual_scale_bar_override",
-      pixel_size_nm_per_px: marker / pixels,
-      marker_length_nm: marker,
-      detected_length_px: pixels,
-      marker_kind: automaticBmpMarker?.marker_kind || state.session.calibration.marker_kind || null,
-      confidence: automaticBmpMarker?.confidence ?? state.session.calibration.confidence ?? null,
-      scale_bar_bounds_px: automaticBmpMarker ? {
-        x_start: automaticBmpMarker.x_start,
-        x_end: automaticBmpMarker.x_end,
-        y_start: automaticBmpMarker.y_start,
-        y_end: automaticBmpMarker.y_end,
-      } : state.session.calibration.scale_bar_bounds_px || null,
-      revision: Number(state.session.calibration.revision || 1) + 1,
-      verified_by_user: true,
-      verified_at: new Date().toISOString(),
-      verification_note: String(payload.verification_note || ""),
-    };
-    refreshLocalSessionMeasurements();
-    state.session.revision = Number(state.session.revision || 0) + 1;
-    persistLocalSession();
-    return { calibration: state.session.calibration, particles: state.session.particles, summary: state.session.summary, session_revision: state.session.revision };
-  }
-  if (url === "/api/manual/particles") {
-    const payload = JSON.parse(options.body || "{}");
-    const particle = refreshLocalParticleMeasurement({
-      id: `m${String(Number(state.session.next_particle_number || 1)).padStart(4, "0")}`,
-      revision: 1,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      shape: payload.shape,
-      h: Number(payload.h ?? 0.5),
-      quaternion_xyzw: [...payload.quaternion_xyzw],
-      scale_px: Number(payload.scale_px),
-      translation_xy_px: [...payload.translation_xy_px],
-      included_in_statistics: payload.included_in_statistics !== false,
-      exclusion_reason: String(payload.exclusion_reason || ""),
-      notes: String(payload.notes || ""),
-    });
-    state.session.next_particle_number = Number(state.session.next_particle_number || 1) + 1;
-    state.session.particles.push(particle);
-    state.session.revision = Number(state.session.revision || 0) + 1;
-    state.session.summary = localSummary(state.session.particles);
-    persistLocalSession();
-    return { particle, summary: state.session.summary, session_revision: state.session.revision };
-  }
-  const particleMatch = url.match(/^\/api\/manual\/particles\/([^/]+)$/);
-  if (particleMatch) {
-    const particleId = decodeURIComponent(particleMatch[1]);
-    const index = state.session.particles.findIndex((particle) => particle.id === particleId);
-    if (index < 0) throw new Error(`Particle not found: ${particleId}`);
-    if (options.method === "DELETE") {
-      const [removed] = state.session.particles.splice(index, 1);
-      state.session.deleted_particles = state.session.deleted_particles || [];
-      state.session.deleted_particles.push({ ...removed, deleted_at: new Date().toISOString() });
-      state.session.revision = Number(state.session.revision || 0) + 1;
-      state.session.summary = localSummary(state.session.particles);
-      persistLocalSession();
-      return { removed, summary: state.session.summary, session_revision: state.session.revision };
-    }
-    const payload = JSON.parse(options.body || "{}");
-    const current = state.session.particles[index];
-    const updated = refreshLocalParticleMeasurement({
-      ...current,
-      shape: payload.shape,
-      h: Number(payload.h ?? current.h),
-      quaternion_xyzw: [...payload.quaternion_xyzw],
-      scale_px: Number(payload.scale_px),
-      translation_xy_px: [...payload.translation_xy_px],
-      included_in_statistics: payload.included_in_statistics !== false,
-      exclusion_reason: String(payload.exclusion_reason || ""),
-      notes: String(payload.notes || ""),
-      revision: Number(current.revision || 1) + 1,
-      updated_at: new Date().toISOString(),
-    });
-    state.session.particles[index] = updated;
-    state.session.revision = Number(state.session.revision || 0) + 1;
-    state.session.summary = localSummary(state.session.particles);
-    persistLocalSession();
-    return { particle: updated, summary: state.session.summary, session_revision: state.session.revision };
-  }
-  if (url === "/api/manual/session/import") {
-    const imported = JSON.parse(options.body || "{}");
-    const importedHash = String(imported?.dataset?.image_sha256 || "");
-    if (importedHash && importedHash !== state.currentImageHash) throw new Error("このJSONは現在のTIFFと一致しません。");
-    state.session = imported;
-    refreshLocalSessionMeasurements();
-    persistLocalSession();
-    return state.session;
-  }
-  throw new Error(`未対応のローカル操作です：${url}`);
+  state.session.calibration = {
+    ...state.session.calibration,
+    source: "manual_override",
+    method: automaticBmpMarker ? "manual_marker_with_auto_detected_scale_bar" : "manual_scale_bar_override",
+    pixel_size_nm_per_px: marker / pixels,
+    marker_length_nm: marker,
+    detected_length_px: pixels,
+    marker_kind: automaticBmpMarker?.marker_kind || state.session.calibration.marker_kind || null,
+    confidence: automaticBmpMarker?.confidence ?? state.session.calibration.confidence ?? null,
+    scale_bar_bounds_px: automaticBmpMarker ? {
+      x_start: automaticBmpMarker.x_start,
+      x_end: automaticBmpMarker.x_end,
+      y_start: automaticBmpMarker.y_start,
+      y_end: automaticBmpMarker.y_end,
+    } : state.session.calibration.scale_bar_bounds_px || null,
+    revision: Number(state.session.calibration.revision || 1) + 1,
+    verified_by_user: true,
+    verified_at: new Date().toISOString(),
+    verification_note: String(payload.verification_note || ""),
+  };
+  refreshLocalSessionMeasurements();
+  state.session.revision = Number(state.session.revision || 0) + 1;
+  persistLocalSession();
+  return { calibration: state.session.calibration, particles: state.session.particles, summary: state.session.summary, session_revision: state.session.revision };
+}
+
+function createLocalParticle(payload) {
+  const particle = refreshLocalParticleMeasurement({
+    id: `m${String(Number(state.session.next_particle_number || 1)).padStart(4, "0")}`,
+    revision: 1,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    shape: payload.shape,
+    h: Number(payload.h ?? 0.5),
+    quaternion_xyzw: [...payload.quaternion_xyzw],
+    scale_px: Number(payload.scale_px),
+    translation_xy_px: [...payload.translation_xy_px],
+    included_in_statistics: payload.included_in_statistics !== false,
+    exclusion_reason: String(payload.exclusion_reason || ""),
+    notes: String(payload.notes || ""),
+  });
+  state.session.next_particle_number = Number(state.session.next_particle_number || 1) + 1;
+  state.session.particles.push(particle);
+  state.session.revision = Number(state.session.revision || 0) + 1;
+  state.session.summary = localSummary(state.session.particles);
+  persistLocalSession();
+  return { particle, summary: state.session.summary, session_revision: state.session.revision };
+}
+
+function updateLocalParticle(particleId, payload) {
+  const index = state.session.particles.findIndex((particle) => particle.id === particleId);
+  if (index < 0) throw new Error(`Particle not found: ${particleId}`);
+  const current = state.session.particles[index];
+  const updated = refreshLocalParticleMeasurement({
+    ...current,
+    shape: payload.shape,
+    h: Number(payload.h ?? current.h),
+    quaternion_xyzw: [...payload.quaternion_xyzw],
+    scale_px: Number(payload.scale_px),
+    translation_xy_px: [...payload.translation_xy_px],
+    included_in_statistics: payload.included_in_statistics !== false,
+    exclusion_reason: String(payload.exclusion_reason || ""),
+    notes: String(payload.notes || ""),
+    revision: Number(current.revision || 1) + 1,
+    updated_at: new Date().toISOString(),
+  });
+  state.session.particles[index] = updated;
+  state.session.revision = Number(state.session.revision || 0) + 1;
+  state.session.summary = localSummary(state.session.particles);
+  persistLocalSession();
+  return { particle: updated, summary: state.session.summary, session_revision: state.session.revision };
+}
+
+function deleteLocalParticle(particleId) {
+  const index = state.session.particles.findIndex((particle) => particle.id === particleId);
+  if (index < 0) throw new Error(`Particle not found: ${particleId}`);
+  const [removed] = state.session.particles.splice(index, 1);
+  state.session.deleted_particles = state.session.deleted_particles || [];
+  state.session.deleted_particles.push({ ...removed, deleted_at: new Date().toISOString() });
+  state.session.revision = Number(state.session.revision || 0) + 1;
+  state.session.summary = localSummary(state.session.particles);
+  persistLocalSession();
+  return { removed, summary: state.session.summary, session_revision: state.session.revision };
+}
+
+function importLocalSession(imported) {
+  const importedHash = String(imported?.dataset?.image_sha256 || "");
+  if (importedHash && importedHash !== state.currentImageHash) throw new Error("このJSONは現在のTIFFと一致しません。");
+  state.session = imported;
+  refreshLocalSessionMeasurements();
+  persistLocalSession();
+  return state.session;
 }
 
 function readBooleanPreference(key, fallback) {
@@ -1802,9 +1838,7 @@ function canvasFromDecodedRaster(decoded) {
   return canvas;
 }
 
-async function loadTiff(fileOrUrl, arrayBuffer = null) {
-  let file = fileOrUrl;
-  if (fileOrUrl === "/api/manual/image" && state.currentImageFile) file = state.currentImageFile;
+async function loadLocalTiff(file, arrayBuffer = null) {
   if (!file || typeof file.arrayBuffer !== "function") {
     throw new Error("画像は選択したローカルファイルから読み込みます。");
   }
@@ -2007,6 +2041,7 @@ function manualSessionToTxt(session) {
     `# scale_bar_length_px\t${calibration.detected_length_px ?? ""}`,
     `# pixel_size_nm_per_px\t${calibration.pixel_size_nm_per_px ?? ""}`,
     `# calibration_verified_by_user\t${Boolean(calibration.verified_by_user)}`,
+    `# standard_deviation_basis\t${summary.standard_deviation_basis || "sample_n_minus_1"}`,
     `# 1_Avg Dia. (SEM)\t${summary.mean_diameter_nm ?? ""}`,
     `# 1_Std. Dev.\t${summary.std_diameter_nm ?? ""}`,
     `# 1_C.V.\t${summary.cv_percent ?? ""}`,
@@ -2157,10 +2192,7 @@ async function refreshSizeDistribution() {
   dom.sizeDistributionDialogStatus.textContent = "ローカルJSONをSEM画像のサブフォルダ単位で集計し，PNGを生成しています。";
   dom.sizeDistributionList.setAttribute("aria-busy", "true");
   try {
-    const result = await apiJson(
-      "/api/manual/size-distributions/refresh",
-      { method: "POST" },
-    );
+    const result = await refreshLocalSizeDistribution();
     state.sizeDistributionPayload = result;
     renderSizeDistributionList(result);
     const runCount = (result.runs || []).length;
@@ -2238,8 +2270,7 @@ async function loadTiffInventory(refresh) {
   if (state.localFiles.length && (!state.localSessionIndexReady || refresh)) {
     await indexLocalSessions();
   }
-  const endpoint = refresh ? "/api/manual/images/refresh" : "/api/manual/images";
-  const result = await apiJson(endpoint, refresh ? { method: "POST" } : {});
+  const result = localImageInventoryResponse();
   state.availableImages = result.images || [];
   const restoredImageId = state.pendingRestoredImagePath;
   state.selectedImageId = result.current_image_id
@@ -2333,8 +2364,8 @@ function aggregateTiffDirectoryStats(images) {
     if (!included) continue;
     let sum = Number(item?.diameter_sum_nm);
     let sumSq = Number(item?.diameter_sum_sq_nm2);
-    // Read older CSV rows as well: a single-image row can be reconstructed
-    // from its mean and population standard deviation.
+    // Old sessions did not persist raw moments.  They used population SD, so
+    // retain that legacy interpretation only while reading such sessions.
     if (!Number.isFinite(sum) || !Number.isFinite(sumSq)) {
       const mean = Number(item?.mean_diameter_nm);
       const std = Number(item?.std_diameter_nm);
@@ -2361,8 +2392,10 @@ function aggregateTiffDirectoryStats(images) {
     };
   }
   const meanDiameterNm = diameterSumNm / includedCount;
-  const variance = Math.max(0, diameterSumSqNm2 / includedCount - meanDiameterNm * meanDiameterNm);
-  const stdDiameterNm = Math.sqrt(variance);
+  const centeredSumSquares = Math.max(0, diameterSumSqNm2 - includedCount * meanDiameterNm ** 2);
+  const stdDiameterNm = includedCount > 1
+    ? Math.sqrt(centeredSumSquares / (includedCount - 1))
+    : null;
   return {
     imageCount: (images || []).length,
     totalSavedCount,
@@ -2370,7 +2403,7 @@ function aggregateTiffDirectoryStats(images) {
     scaleVerifiedCount,
     meanDiameterNm,
     stdDiameterNm,
-    cvPercent: meanDiameterNm > 0 ? 100 * stdDiameterNm / meanDiameterNm : null,
+    cvPercent: meanDiameterNm > 0 && stdDiameterNm !== null ? 100 * stdDiameterNm / meanDiameterNm : null,
   };
 }
 
@@ -2493,7 +2526,7 @@ async function openSelectedTiff() {
     state.currentImageFile = imageFile;
     state.currentImageBuffer = arrayBuffer;
     state.currentImageHash = await sha256Hex(arrayBuffer);
-    const image = await loadTiff(imageFile, arrayBuffer);
+    const image = await loadLocalTiff(imageFile, arrayBuffer);
     const session = await createLocalSession(imageFile, image, state.currentImageHash);
     validateTiffRaster(image, session);
     state.session = session;
@@ -2602,17 +2635,13 @@ async function verifyOrUpdateScale() {
   }
   dom.verifyScaleButton.disabled = true;
   try {
-    const result = await apiJson("/api/manual/calibration", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        marker_length_nm: marker,
-        detected_length_px: pixels,
-        expected_revision: state.session.calibration.revision,
-        expected_image_sha256: state.session.dataset?.image_sha256,
-        verified_by_user: true,
-        verification_note: dom.scaleVerificationNote.value,
-      }),
+    const result = updateLocalCalibration({
+      marker_length_nm: marker,
+      detected_length_px: pixels,
+      expected_revision: state.session.calibration.revision,
+      expected_image_sha256: state.session.dataset?.image_sha256,
+      verified_by_user: true,
+      verification_note: dom.scaleVerificationNote.value,
     });
     state.session.calibration = result.calibration;
     state.session.particles = result.particles;
@@ -2866,11 +2895,7 @@ async function pasteCopiedParticle() {
   state.saving = true;
   renderInspector();
   try {
-    const result = await apiJson("/api/manual/particles", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    const result = createLocalParticle(payload);
     clipboard.pasteCount += 1;
     applySavedParticleResult(result);
     toast(`${clipboard.sourceId} のコピーを ${result.particle.id} として登録しました。`);
@@ -2911,16 +2936,8 @@ async function commitWorkingParticle() {
   };
   try {
     const result = state.isDraft
-      ? await apiJson("/api/manual/particles", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
-      : await apiJson(`/api/manual/particles/${encodeURIComponent(state.workingId)}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...payload, expected_revision: state.working.revision }),
-        });
+      ? createLocalParticle(payload)
+      : updateLocalParticle(state.workingId, { ...payload, expected_revision: state.working.revision });
     applySavedParticleResult(result);
     toast(`${result.particle.id} を保存しました。r = ${formatted(result.particle.equivalent_radius_nm, 2)} nm`);
   } catch (error) {
@@ -2971,14 +2988,7 @@ async function deleteWorkingParticle() {
   const label = state.workingId;
   if (!window.confirm(`${label} を計測一覧から削除しますか？削除記録はJSONの監査履歴に保持されます。`)) return;
   try {
-    const result = await apiJson(`/api/manual/particles/${encodeURIComponent(label)}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        expected_revision: state.working.revision,
-        expected_image_sha256: state.session.dataset?.image_sha256,
-      }),
-    });
+    const result = deleteLocalParticle(label);
     state.session.particles = state.session.particles.filter((item) => item.id !== label);
     state.session.summary = result.summary;
     state.session.revision = result.session_revision;
@@ -2999,11 +3009,7 @@ async function importJsonFile() {
   }
   try {
     const parsed = JSON.parse(await file.text());
-    const restored = await apiJson("/api/manual/session/import", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(parsed),
-    });
+    const restored = importLocalSession(parsed);
     state.session = restored;
     state.working = null;
     state.workingId = null;

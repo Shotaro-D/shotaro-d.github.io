@@ -6,6 +6,7 @@ import pytest
 from werkzeug.security import generate_password_hash
 
 from app import create_app, load_users
+from create_user import MINIMUM_PASSWORD_LENGTH, password_meets_policy
 
 
 def make_client(monkeypatch, tmp_path: Path):
@@ -118,11 +119,14 @@ def test_login_rate_limit_is_per_client_and_resets_after_success(monkeypatch, tm
             data={"email": "boss@example.com", "password": "incorrect"},
             environ_overrides=first_ip,
         ).status_code == 401
-    assert client.post(
+    response = client.post(
         "/login",
         data={"email": "boss@example.com", "password": "incorrect"},
         environ_overrides=first_ip,
-    ).status_code == 429
+    )
+    assert response.status_code == 429
+    assert 1 <= int(response.headers["Retry-After"]) <= 600
+    assert response.headers["Cache-Control"] == "no-store"
 
 
 def test_proxy_fix_uses_the_render_forwarded_client_address(monkeypatch, tmp_path: Path):
@@ -169,6 +173,15 @@ def test_production_requires_a_secret_key(monkeypatch, tmp_path: Path):
         create_app({"TESTING": True})
 
 
+def test_production_requires_at_least_one_user(monkeypatch, tmp_path: Path):
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("APP_SECRET_KEY", "test-secret-key")
+    monkeypatch.delenv("APP_USERS_JSON", raising=False)
+    monkeypatch.setenv("APP_INSTANCE_DIR", str(tmp_path / "instance"))
+    with pytest.raises(RuntimeError, match="At least one user must be configured"):
+        create_app({"TESTING": True})
+
+
 def test_load_users_rejects_invalid_json(monkeypatch, tmp_path: Path):
     monkeypatch.delenv("APP_USERS_JSON", raising=False)
     user_file = tmp_path / "users.json"
@@ -198,3 +211,17 @@ def test_security_headers_and_fixed_session_lifetime(monkeypatch, tmp_path: Path
     assert response.headers["X-Frame-Options"] == "DENY"
     login(client)
     assert app.permanent_session_lifetime == timedelta(days=1)
+
+
+def test_session_response_is_not_cacheable(monkeypatch, tmp_path: Path):
+    client = make_client(monkeypatch, tmp_path)
+    assert client.get("/api/session").headers["Cache-Control"] == "no-store"
+    login(client)
+    response = client.get("/api/session")
+    assert response.headers["Cache-Control"] == "no-store"
+
+
+def test_password_policy_minimum_length_is_twelve_characters():
+    assert MINIMUM_PASSWORD_LENGTH == 12
+    assert password_meets_policy("a" * 11) is False
+    assert password_meets_policy("a" * 12) is True

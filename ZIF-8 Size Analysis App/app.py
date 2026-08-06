@@ -6,6 +6,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 import json
 import logging
+import math
 import os
 from pathlib import Path
 import secrets
@@ -114,8 +115,12 @@ def _is_api_request() -> bool:
     return request.path.startswith("/api/") or request.path in {"/login", "/logout"}
 
 
-def _json_error(message: str, status: int = 400):
-    return jsonify({"ok": False, "error": message}), status
+def _json_error(message: str, status: int = 400, headers: dict[str, str] | None = None):
+    response = jsonify({"ok": False, "error": message})
+    response.status_code = status
+    if headers:
+        response.headers.update(headers)
+    return response
 
 
 def create_app(test_config: dict[str, Any] | None = None) -> Flask:
@@ -127,6 +132,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app_env = os.environ.get("APP_ENV", "development")
     if app_env == "production" and not secret_key:
         raise RuntimeError("APP_SECRET_KEY must be set in production")
+    users = load_users(instance_root)
+    if app_env == "production" and not users:
+        raise RuntimeError("At least one user must be configured in production")
     app = Flask(__name__, instance_path=str(instance_root), instance_relative_config=True)
     app.config.from_mapping(
         SECRET_KEY=secret_key or "local-development-secret-change-me",
@@ -166,7 +174,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         return request.remote_addr or "unknown"
 
     def current_users() -> dict[str, str]:
-        return load_users(instance_root)
+        return users
 
     def authenticated() -> bool:
         return (
@@ -197,6 +205,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def add_security_headers(response):
         for name, value in SECURITY_HEADERS.items():
             response.headers.setdefault(name, value)
+        if request.path == "/api/session":
+            response.headers.setdefault("Cache-Control", "no-store")
         return response
 
     @app.get("/")
@@ -216,7 +226,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         client_ip = login_client_ip()
         attempts = login_failures.setdefault(client_ip, [])
         if len(attempts) >= LOGIN_FAILURE_LIMIT:
-            return _json_error("ログイン試行が多すぎます。10分後に再試行してください。", 429)
+            retry_after = max(1, math.ceil(LOGIN_FAILURE_WINDOW_SECONDS - (now - attempts[0])))
+            return _json_error(
+                "ログイン試行が多すぎます。しばらく待ってから再試行してください。",
+                429,
+                {"Retry-After": str(retry_after), "Cache-Control": "no-store"},
+            )
 
         password_hash = current_users().get(email)
         if not password_hash or not check_password_hash(password_hash, password):
@@ -242,12 +257,14 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.get("/api/session")
     def session_info():
-        return jsonify({
+        response = jsonify({
             "ok": True,
             "email": session.get("user_email", ""),
             "auth_day": session.get("auth_day", ""),
             "csrf_token": session.get("csrf_token", ""),
         })
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
     return app
 
