@@ -26,6 +26,8 @@ def test_browser_reads_and_saves_user_files_without_uploading_them():
     assert "restorePreviousLocalDirectory" in manual_javascript
     assert "reconnectSavedLocalFolder" in manual_javascript
     assert "LOCAL_DIRECTORY_LAST_IMAGE_KEY" in manual_javascript
+    assert 'id="changeProjectButton"' in html
+    assert "selectAnotherProject" in manual_javascript
     assert 'return fileDirectory(file) || "(選択フォルダ直下)";' in manual_javascript
     assert 'const columns = ["SEM subfolder"];' in manual_javascript
     assert '"archive", "archive code", "gomi", "trash"' in manual_javascript
