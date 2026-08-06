@@ -1,9 +1,4 @@
-(function exposeManualGeometry(root, factory) {
-  const api = factory();
-  if (typeof module === "object" && module.exports) module.exports = api;
-  if (root) root.ManualGeometry = api;
-}(typeof globalThis !== "undefined" ? globalThis : this, function buildManualGeometry() {
-  "use strict";
+"use strict";
 
   function quaternionFromAxisAngle(axis, angle) {
     const length = Math.hypot(axis[0], axis[1], axis[2]) || 1;
@@ -266,24 +261,23 @@
     return output;
   }
 
-  return Object.freeze({
-    actionForShortcut,
-    axisConstrainedDragQuaternion,
-    clipPolygonToRect,
-    convexHull,
-    dragToolForModifiers,
-    dragRotationQuaternion,
-    pointInPolygon,
-    particleNumberLabel,
-    offsetPastedTranslation,
-    polygonArea,
-    quaternionFromAxisAngle,
-    quaternionMultiply,
-    relativeZoomForActualPixels,
-    rotateVector,
-    rotationAxisForShortcut,
-    shouldSmoothImage,
-    wheelInteraction,
-    wheelScaleFactor,
-  });
-}));
+export {
+  actionForShortcut,
+  axisConstrainedDragQuaternion,
+  clipPolygonToRect,
+  convexHull,
+  dragToolForModifiers,
+  dragRotationQuaternion,
+  pointInPolygon,
+  particleNumberLabel,
+  offsetPastedTranslation,
+  polygonArea,
+  quaternionFromAxisAngle,
+  quaternionMultiply,
+  relativeZoomForActualPixels,
+  rotateVector,
+  rotationAxisForShortcut,
+  shouldSmoothImage,
+  wheelInteraction,
+  wheelScaleFactor,
+};

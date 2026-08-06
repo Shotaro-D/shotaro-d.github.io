@@ -1,3 +1,5 @@
+import { startManualApp } from "./manual.js";
+
 (() => {
   "use strict";
 
@@ -20,7 +22,7 @@
     $("#loginView").hidden = true;
     $("#appView").hidden = false;
     $("#userEmail").textContent = session.email || "";
-    if (window.ManualApp) window.ManualApp.start(session);
+    startManualApp(session);
   }
 
   async function requestJson(url, options = {}) {
