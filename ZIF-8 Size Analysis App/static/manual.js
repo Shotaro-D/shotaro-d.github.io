@@ -94,6 +94,9 @@ const ROTATION_RADIANS_PER_PIXEL = 0.0105;
 const INTERACTION_HELP_TEXT = "通常ドラッグ＝3D回転，X／Y／Z＋ドラッグ＝各モデル軸回転，Shift＋ドラッグ＝移動，Option＋ドラッグ＝2D回転です。人差し指ホイール＝図形サイズ（Shiftで画像ズーム），親指ホイール＝画像ズームです。";
 const PARTICLE_NUMBER_PREFERENCE_KEY = "manual-sem-show-particle-numbers";
 const SCALE_BAR_AUTO_DETECTION_MIN_CONFIDENCE = 0.65;
+// The BMP footer can include a long white scale bar.  A footer row is still
+// valid when up to 35% of its width is occupied by that overlay.
+const FOOTER_DARK_FRACTION_MIN = 0.65;
 
 const state = {
   session: null,
@@ -609,7 +612,7 @@ function detectLocalFooter(image) {
   for (let y = start; y <= height - 6; y += 1) {
     let qualifies = true;
     for (let row = y; row < y + 6; row += 1) {
-      if (rowDarkFraction[row] < 0.8) {
+      if (rowDarkFraction[row] < FOOTER_DARK_FRACTION_MIN) {
         qualifies = false;
         break;
       }
@@ -629,7 +632,8 @@ function detectLocalFooter(image) {
   const transitionContrast = Math.min(1, Math.max(0, ((1 - before / beforeRows) - (1 - after / 6)) / 0.35));
   let darkMean = 0;
   for (let y = yStart; y < Math.min(height, yStart + 6); y += 1) darkMean += rowDarkFraction[y];
-  const darknessScore = Math.min(1, Math.max(0, ((darkMean / 6) - 0.8) / 0.2));
+  darkMean /= 6;
+  const darknessScore = Math.min(1, Math.max(0, (darkMean - FOOTER_DARK_FRACTION_MIN) / (1 - FOOTER_DARK_FRACTION_MIN)));
   const locationScore = Math.min(1, Math.max(0, (yStart / height - 0.55) / 0.35));
   return {
     x_start: 0,
