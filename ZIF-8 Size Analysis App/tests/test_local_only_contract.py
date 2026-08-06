@@ -55,6 +55,14 @@ def test_browser_local_size_distribution_is_available_without_uploading_files():
     assert "SIZE_DISTRIBUTION_HISTOGRAM_ALPHA = 0.6" in manual_javascript
     assert "SIZE_DISTRIBUTION_X_MARGIN = 0.05" in manual_javascript
     assert "roundedRectPath(context" in manual_javascript
+    assert "NATURAL_ORDER_COLLATOR" in manual_javascript
+    assert "compareNaturalPaths" in manual_javascript
+    assert "showDirectoryPicker" in manual_javascript
+    assert "createWritable" in manual_javascript
+    assert "saveBlobToLocalDirectory" in manual_javascript
+    assert "dataUrlToBlob" in manual_javascript
+    assert "downloadLocal" not in manual_javascript
+    assert "ローカルフォルダへ直接保存します" in html
     assert manual_javascript.count("fetch(") == 1
 
 
