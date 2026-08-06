@@ -95,6 +95,8 @@ const state = {
   shortcutsOpen: false,
   localFiles: [],
   localFileMap: new Map(),
+  localJsonFilesByName: new Map(),
+  localSessionIndexReady: false,
   currentImageFile: null,
   currentImageBuffer: null,
   currentImageHash: "",
@@ -350,7 +352,15 @@ function localImageInventory() {
 function setLocalFiles(files) {
   state.localFiles = files.filter((file) => file && file.name);
   state.localFileMap = new Map(state.localFiles.map((file) => [normalisedFilePath(file), file]));
+  state.localJsonFilesByName = new Map();
+  for (const file of state.localFiles) {
+    if (!/\.json$/i.test(file.name)) continue;
+    const filesWithName = state.localJsonFilesByName.get(file.name) || [];
+    filesWithName.push(file);
+    state.localJsonFilesByName.set(file.name, filesWithName);
+  }
   state.localSessions = new Map();
+  state.localSessionIndexReady = false;
   state.availableImages = [];
   state.selectedImageId = null;
   state.currentImageFile = null;
@@ -364,7 +374,7 @@ function setLocalFiles(files) {
   dom.manualCanvasMessage.hidden = false;
   dom.manualCanvasMessage.classList.remove("is-error");
   dom.manualCanvasMessage.querySelector(".spinner").hidden = false;
-  dom.manualCanvasMessage.querySelector("span:last-child").textContent = "ローカルTIFF一覧を作成しています。";
+  dom.manualCanvasMessage.querySelector("span:last-child").textContent = "ローカルTIFFと対応JSONを読み込んでいます。";
   loadTiffInventory(false).catch((error) => {
     dom.manualCanvasMessage.classList.add("is-error");
     dom.manualCanvasMessage.querySelector(".spinner").hidden = true;
@@ -413,9 +423,11 @@ function localSessionCandidates(imageFile) {
     `work/${stem}_manual_count.json`,
     `outputs/${stem}_manual_count_session.json`,
   ].filter(Boolean).map(localFileByPath).filter(Boolean);
-  const nearbyCandidates = state.localFiles.filter((file) => {
-    if (!/\.json$/i.test(file.name) || file.name === imageFile.name) return false;
-    if (file.name !== `${stem}_manual_count.json` && file.name !== `${stem}_manual_count_session.json`) return false;
+  const nearbyCandidates = [
+    ...(state.localJsonFilesByName.get(`${stem}_manual_count.json`) || []),
+    ...(state.localJsonFilesByName.get(`${stem}_manual_count_session.json`) || []),
+  ].filter((file) => {
+    if (file.name === imageFile.name) return false;
     const path = normalisedFilePath(file).toLowerCase();
     return path.includes("/work/") || path.includes("/outputs/");
   });
@@ -429,6 +441,43 @@ async function readJsonFile(file) {
   } catch (_) {
     return null;
   }
+}
+
+function isManualSessionForImage(candidate, imageFile) {
+  if (!candidate || typeof candidate !== "object") return false;
+  const candidateImage = String(candidate?.image?.name || "");
+  if (candidateImage && candidateImage !== imageFile.name) return false;
+  if (candidate.workflow === "manual_3d_projected_area_count") return true;
+  return Array.isArray(candidate.particles)
+    && candidate.particles.every((particle) => particle && typeof particle === "object"
+      && Array.isArray(particle.quaternion_xyzw)
+      && Array.isArray(particle.translation_xy_px)
+      && Number.isFinite(Number(particle.scale_px)));
+}
+
+async function indexLocalSessions() {
+  const imageFiles = localImageFiles();
+  const candidateFiles = new Map();
+  for (const imageFile of imageFiles) {
+    for (const candidateFile of localSessionCandidates(imageFile)) {
+      candidateFiles.set(normalisedFilePath(candidateFile), candidateFile);
+    }
+  }
+  const parsedFiles = new Map();
+  await Promise.all([...candidateFiles].map(async ([path, file]) => {
+    parsedFiles.set(path, await readJsonFile(file));
+  }));
+
+  state.localSessions = new Map();
+  for (const imageFile of imageFiles) {
+    for (const candidateFile of localSessionCandidates(imageFile)) {
+      const candidate = parsedFiles.get(normalisedFilePath(candidateFile));
+      if (!isManualSessionForImage(candidate, imageFile)) continue;
+      state.localSessions.set(normalisedFilePath(imageFile), candidate);
+      break;
+    }
+  }
+  state.localSessionIndexReady = true;
 }
 
 async function sha256Hex(arrayBuffer) {
@@ -927,6 +976,9 @@ async function openTiffDialog() {
 }
 
 async function loadTiffInventory(refresh) {
+  if (state.localFiles.length && (!state.localSessionIndexReady || refresh)) {
+    await indexLocalSessions();
+  }
   const endpoint = refresh ? "/api/manual/images/refresh" : "/api/manual/images";
   const result = await apiJson(endpoint, refresh ? { method: "POST" } : {});
   state.availableImages = result.images || [];
