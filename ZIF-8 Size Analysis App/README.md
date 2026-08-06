@@ -6,11 +6,12 @@
 
 このアプリの解析対象は，使用者のブラウザーだけで読み込む。Flask／Render側は認証処理と，フィッティングに必要な固定3Dモデル形状JSONの配信だけを行う。
 
-- フォルダ選択はブラウザーのFile API（`webkitdirectory`）で行う。
+- フォルダ選択はChrome／EdgeではFile System Access API，それ以外の対応ブラウザーではFile API（`webkitdirectory`）で行う。
 - TIFF，TXT，JPEG，CSV，JSONなどは，選択されたローカルFileオブジェクトからブラウザー内で読む。
 - SEM画像，サイドカーTXT，解析JSONを`fetch`，`FormData`，multipart uploadでサーバーへ送信しない。
 - 3Dモデルの投影，投影面積，等価円直径，粒子統計はJavaScriptとCanvasでブラウザー内に計算する。
 - 作業セッションはブラウザーの`localStorage`へ画像ハッシュ単位で保存する。
+- Chrome／Edgeでは，選択したローカルフォルダのハンドルをブラウザー内のIndexedDBへ保存する。再読み込み後，アクセス権が維持されていればフォルダと直前の画像を自動復元する。ブラウザーが再許可を求める場合だけ，「前回のフォルダを再接続」を押す。画像・TXT・解析JSONそのものは保存・送信しない。
 - JSON，TXT，PNG，JPEGはブラウザーで生成し，使用者のローカルへダウンロードする。
 - ログイン時の認証要求と認証セッション以外に，使用者のファイル内容をサーバーへ送らない。
 

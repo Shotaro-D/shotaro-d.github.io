@@ -21,6 +21,11 @@ def test_browser_reads_and_saves_user_files_without_uploading_them():
     assert "arrayBuffer()" in manual_javascript
     assert "file.text()" in manual_javascript
     assert "localStorage" in manual_javascript
+    assert "indexedDB" in manual_javascript
+    assert "persistLocalDirectoryHandle" in manual_javascript
+    assert "restorePreviousLocalDirectory" in manual_javascript
+    assert "reconnectSavedLocalFolder" in manual_javascript
+    assert "LOCAL_DIRECTORY_LAST_IMAGE_KEY" in manual_javascript
     assert "new Blob" in manual_javascript
     assert "async function indexLocalSessions()" in manual_javascript
     assert "await indexLocalSessions();" in manual_javascript
@@ -38,6 +43,7 @@ def test_browser_reads_and_saves_user_files_without_uploading_them():
     assert "FormData" in app_javascript  # credentials only, never the selected folder
     assert "/api/jobs" not in manual_javascript + app_javascript
     assert "サーバーへ送信されません" in html
+    assert "選択したローカルフォルダのハンドルをブラウザー内のIndexedDBへ保存" in (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
 
 
 def test_browser_local_size_distribution_is_available_without_uploading_files():
