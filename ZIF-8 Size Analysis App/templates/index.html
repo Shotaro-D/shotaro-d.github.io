@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/static/styles.css">
   <link rel="stylesheet" href="/static/manual.css">
 </head>
-<body class="manual-body" data-authenticated="{{ 'true' if authenticated else 'false' }}">
+<body class="manual-body">
   <a class="skip-link" href="#manualMain">メインコンテンツへ移動</a>
 
   <main id="loginView" class="auth-shell" hidden>
@@ -337,9 +337,6 @@
   </div>
 
   <div id="toastRegion" class="manual-toast-region" aria-live="polite" aria-atomic="true"></div>
-  <script src="/static/tiff_decoder.js" defer></script>
-  <script src="/static/manual_geometry.js" defer></script>
-  <script src="/static/manual.js" defer></script>
-  <script src="/static/app.js" defer></script>
+  <script type="module" src="/static/app.js"></script>
 </body>
 </html>

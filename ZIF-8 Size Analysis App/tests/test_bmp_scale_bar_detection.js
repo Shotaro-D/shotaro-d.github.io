@@ -1,25 +1,7 @@
-"use strict";
+import assert from "node:assert/strict";
 
-const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const path = require("node:path");
-const vm = require("node:vm");
-
-const projectRoot = path.resolve(__dirname, "..");
-const manualSource = fs.readFileSync(path.join(projectRoot, "static", "manual.js"), "utf8");
-const sandbox = {
-  window: {
-    SemTiffDecoder: { decodeTiff: () => null },
-    ManualGeometry: {},
-  },
-  console,
-};
-vm.createContext(sandbox);
-vm.runInContext(
-  `${manualSource}\nglobalThis.__manualFunctions = { detectLocalFooter, detectLocalScaleMarker, localAnalysisRun, isExcludedLocalPath };`,
-  sandbox,
-  { filename: "manual.js" },
-);
+import { localAnalysisRun, isExcludedLocalPath } from "../static/manual_local_paths.js";
+import { detectLocalFooter, detectLocalScaleMarker } from "../static/manual_scale.js";
 
 const width = 1800;
 const height = 652;
@@ -47,8 +29,8 @@ fillRect(0, width, footerStart, 548, 0);
 fillRect(barStart, barEnd, footerStart + 2, footerStart + 16, 255);
 
 const image = { naturalWidth: width, naturalHeight: height, tiffPixels: rgba };
-const footer = sandbox.__manualFunctions.detectLocalFooter(image);
-const detection = sandbox.__manualFunctions.detectLocalScaleMarker(image, null, null);
+const footer = detectLocalFooter(image);
+const detection = detectLocalScaleMarker(image, null, null);
 
 assert.equal(footer.y_start, footerStart);
 assert.equal(detection.marker.marker_kind, "horizontal_bar");
@@ -56,13 +38,10 @@ assert.equal(detection.marker.detected_length_px, barEnd - barStart);
 assert.ok(detection.marker.confidence >= 0.65);
 
 assert.equal(
-  sandbox.__manualFunctions.localAnalysisRun({
-    name: "MLZIF99_image.bmp",
-    webkitRelativePath: "experiment/SEM_25k/MLZIF99_image.bmp",
-  }),
+  localAnalysisRun("experiment/SEM_25k/MLZIF99_image.bmp"),
   "experiment/SEM_25k",
 );
-assert.equal(sandbox.__manualFunctions.isExcludedLocalPath("experiment/Archive/image.bmp"), true);
-assert.equal(sandbox.__manualFunctions.isExcludedLocalPath("experiment/gomi/image.bmp"), true);
-assert.equal(sandbox.__manualFunctions.isExcludedLocalPath("experiment/trash/image.bmp"), true);
-assert.equal(sandbox.__manualFunctions.isExcludedLocalPath("experiment/SEM_25k/image.bmp"), false);
+assert.equal(isExcludedLocalPath("experiment/Archive/image.bmp"), true);
+assert.equal(isExcludedLocalPath("experiment/gomi/image.bmp"), true);
+assert.equal(isExcludedLocalPath("experiment/trash/image.bmp"), true);
+assert.equal(isExcludedLocalPath("experiment/SEM_25k/image.bmp"), false);

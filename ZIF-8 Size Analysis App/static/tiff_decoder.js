@@ -1,7 +1,6 @@
 "use strict";
 
-(function attachSemTiffDecoder(globalObject) {
-  const TYPE_BYTES = new Map([
+const TYPE_BYTES = new Map([
     [1, 1],  // BYTE
     [2, 1],  // ASCII
     [3, 2],  // SHORT
@@ -15,21 +14,21 @@
     [11, 4], // FLOAT
     [12, 8], // DOUBLE
     [13, 4], // IFD
-  ]);
-  const MAX_PIXELS = 250_000_000;
+]);
+const MAX_PIXELS = 250_000_000;
 
-  function fail(message) {
-    throw new Error(`TIFFを原寸でデコードできません：${message}`);
+function fail(message) {
+  throw new Error(`TIFFを原寸でデコードできません：${message}`);
+}
+
+function checkedRange(offset, length, totalLength, label) {
+  if (!Number.isSafeInteger(offset) || !Number.isSafeInteger(length)
+      || offset < 0 || length < 0 || offset + length > totalLength) {
+    fail(`${label}がファイル範囲外です。`);
   }
+}
 
-  function checkedRange(offset, length, totalLength, label) {
-    if (!Number.isSafeInteger(offset) || !Number.isSafeInteger(length)
-        || offset < 0 || length < 0 || offset + length > totalLength) {
-      fail(`${label}がファイル範囲外です。`);
-    }
-  }
-
-  function decodeTiff(arrayBuffer) {
+export function decodeTiff(arrayBuffer) {
     if (!(arrayBuffer instanceof ArrayBuffer)) fail("入力がArrayBufferではありません。 ");
     const view = new DataView(arrayBuffer);
     if (view.byteLength < 8) fail("ヘッダーが短すぎます。 ");
@@ -199,7 +198,4 @@
         hitachiXpCommentBytes: bytesFor(40092),
       },
     };
-  }
-
-  globalObject.SemTiffDecoder = Object.freeze({ decodeTiff });
-}(typeof window !== "undefined" ? window : globalThis));
+}

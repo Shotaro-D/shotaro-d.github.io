@@ -4,7 +4,7 @@
 
 ## 最重要：研究データはサーバーへ送信しない
 
-このアプリの解析対象は，使用者のブラウザーだけで読み込む。Flask／Render側は認証処理と，フィッティングに必要な固定3Dモデル形状JSONの配信だけを行う。
+このアプリの解析対象は，使用者のブラウザーだけで読み込む。Flask／Render側は認証処理だけを行う。フィッティングに必要な固定3Dモデル形状JSONは，公開静的ファイルとして配信する。
 
 - フォルダ選択はChrome／EdgeではFile System Access API，それ以外の対応ブラウザーではFile API（`webkitdirectory`）で行う。
 - TIFF，TXT，JPEG，CSV，JSONなどは，選択されたローカルFileオブジェクトからブラウザー内で読む。
@@ -15,7 +15,7 @@
 - JSON，TXT，PNG，JPEGはブラウザーで生成し，使用者のローカルへダウンロードする。
 - ログイン時の認証要求と認証セッション以外に，使用者のファイル内容をサーバーへ送らない。
 
-ブラウザーの開発者ツールのNetwork欄で，解析対象を開いた後に送信されるリクエストがないことを確認できる。`/api/manual/meshes`はユーザー固有でない固定3Dモデル情報だけを取得するリクエストである。
+ブラウザーの開発者ツールのNetwork欄で，解析対象を開いた後に送信されるリクエストがないことを確認できる。`/static/manual_meshes.json`の取得は，ユーザー固有でない固定3Dモデル情報だけを読む。
 
 ## 操作
 
@@ -52,9 +52,14 @@
 APP_ENV=production
 APP_SECRET_KEY=<十分に長いランダム値>
 APP_USERS_JSON=<メールアドレスとパスワードハッシュのJSON>
+APP_TRUSTED_PROXY_COUNT=1
 ```
 
-認証は日本時間の日付単位で有効である。本番Cookieは`Secure`，`HttpOnly`，`SameSite=Lax`であり，ログイン試行には簡易レート制限を設けている。
+認証は日本時間の日付単位で有効である。本番Cookieは`Secure`，`HttpOnly`，`SameSite=Lax`であり，ログイン試行には簡易レート制限を設けている。Renderでは`APP_TRUSTED_PROXY_COUNT=1`として，Render直前のプロキシが付与するクライアントIPだけを信頼する。
+
+レスポンスには，外部接続を`'self'`に限定するContent Security Policy，`X-Content-Type-Options: nosniff`，`Referrer-Policy: no-referrer`，クリックジャッキングを防ぐフレーム禁止ヘッダーを付与する。これはXSS等で混入した外部送信先を抑止する防御であり，GitHubまたはRenderのデプロイ権限を奪われた場合の代替防御にはならない。
+
+現在のレート制限は単一プロセス用のインメモリ実装である。GunicornワーカーまたはRenderサービスを複数に増やす場合は，Redis互換の共有ストアによるレート制限へ移行すること。`APP_TRUSTED_PROXY_COUNT`は，実際にアプリ直前でヘッダーを設定するプロキシ数に合わせ，独自プロキシを追加した場合は見直す。
 
 実運用のパスワードをREADME，GitHub，Homepage，HTML，JavaScript，ログへ書き込まない。HTTPSを使用し，認証情報をこのアプリ以外へ再利用しない。
 
@@ -80,6 +85,19 @@ export APP_USERS_JSON='{"user@example.com":"paste-generated-password-hash-here"}
 
 ブラウザーで`http://127.0.0.1:8795/`を開く。
 
+## テスト
+
+テストにはPython 3.10以上，pytest，Node.js 20以上を使用する。Node.jsがないローカル環境ではBMPスケールバーのNodeテストはskipされるが，CIでは必ず実行する。
+
+```bash
+cd "ZIF-8 Size Analysis App"
+.venv/bin/python -m pip install -e ".[test]"
+npm run check:js
+.venv/bin/python -m pytest -q
+```
+
+GitHub Actionsはpushおよびpull requestごとに，同じJavaScript構文検査とpytestを実行する。
+
 ## Render
 
 ```text
@@ -87,6 +105,6 @@ Build Command: pip install -r requirements.txt
 Start Command: gunicorn --bind 0.0.0.0:$PORT app:app
 ```
 
-GitHubへPython仮想環境，平文パスワード，ユーザーJSON，SEM画像，解析データを入れない。RenderのEnvironment Variablesに認証Secretだけを登録する。アプリのコードを更新した後は，Renderで再デプロイする。
+GitHubへPython仮想環境，平文パスワード，ユーザーJSON，SEM画像，解析データを入れない。開発中にSEM画像や生成CSV/JSONを置く必要がある場合は，追跡対象外の`local-data/`配下を使用する。RenderのEnvironment Variablesに認証Secretだけを登録する。アプリのコードを更新した後は，Renderで再デプロイする。
 
 本アプリの設計上，Renderの一時ディスクへ解析対象を保存する機能は存在しない。ただし，ブラウザーへ配信されるJavaScriptを改変できる立場の者は，ブラウザー内データを取得できるため，アプリのGitHubリポジトリとRenderのデプロイ権限を厳格に管理する。

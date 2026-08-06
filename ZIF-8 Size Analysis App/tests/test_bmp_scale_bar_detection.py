@@ -1,11 +1,15 @@
+import shutil
 import subprocess
 from pathlib import Path
 
+import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_bmp_footer_scale_bar_is_detected_without_metadata():
+    if shutil.which("node") is None:
+        pytest.skip("Node.js is required for the BMP scale-bar module test")
     completed = subprocess.run(
         ["node", "tests/test_bmp_scale_bar_detection.js"],
         cwd=PROJECT_ROOT,

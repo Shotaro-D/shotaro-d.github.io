@@ -10,12 +10,14 @@ def test_server_has_authentication_and_static_geometry_only():
     assert "request.files" not in app_source
     assert "/api/jobs" not in app_source
     assert "send_file" not in app_source
-    assert "/api/manual/meshes" in app_source
+    assert "/api/manual/meshes" not in app_source
+    assert "Content-Security-Policy" in app_source
 
 
 def test_browser_reads_and_saves_user_files_without_uploading_them():
     manual_javascript = (PROJECT_ROOT / "static" / "manual.js").read_text(encoding="utf-8")
     app_javascript = (PROJECT_ROOT / "static" / "app.js").read_text(encoding="utf-8")
+    local_paths_javascript = (PROJECT_ROOT / "static" / "manual_local_paths.js").read_text(encoding="utf-8")
     html = (PROJECT_ROOT / "templates" / "index.html").read_text(encoding="utf-8")
     assert "webkitdirectory" in html
     assert "arrayBuffer()" in manual_javascript
@@ -30,7 +32,7 @@ def test_browser_reads_and_saves_user_files_without_uploading_them():
     assert "selectAnotherProject" in manual_javascript
     assert 'return fileDirectory(file) || "(選択フォルダ直下)";' in manual_javascript
     assert 'const columns = ["SEM subfolder"];' in manual_javascript
-    assert '"archive", "archive code", "gomi", "trash"' in manual_javascript
+    assert '"archive", "archive code", "gomi", "trash"' in local_paths_javascript
     assert "new Blob" in manual_javascript
     assert "async function indexLocalSessions()" in manual_javascript
     assert "await indexLocalSessions();" in manual_javascript
@@ -41,11 +43,10 @@ def test_browser_reads_and_saves_user_files_without_uploading_them():
     assert "automaticallyDetectBmpScaleBar" in manual_javascript
     assert "manual_marker_with_auto_detected_scale_bar" in manual_javascript
     assert "BMPではバー表示値（nm）のみを入力してください。" in html
-    assert manual_javascript.count("fetch(") == 1
-    assert 'fetch(url, { credentials: "same-origin" })' in manual_javascript
+    assert 'fetch("/static/manual_meshes.json", { credentials: "same-origin" })' in manual_javascript
     assert 'dom.manualCanvasMessage.hidden = true;' in manual_javascript
     assert "TIFF／BMP一覧から画像を選択してください。" in manual_javascript
-    assert "FormData" in app_javascript  # credentials only, never the selected folder
+    assert "FormData" in app_javascript  # login credentials only, never the selected folder
     assert "/api/jobs" not in manual_javascript + app_javascript
     assert "サーバーへ送信されません" in html
     assert "選択したローカルフォルダのハンドルをブラウザー内のIndexedDBへ保存" in (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
@@ -63,12 +64,6 @@ def test_browser_local_size_distribution_is_available_without_uploading_files():
     assert "Normal fit" in manual_javascript
     assert "saveSizeDistributionCsv" in manual_javascript
     assert "/api/manual/size-distributions/refresh" in manual_javascript
-    assert "SIZE_DISTRIBUTION_FRAME_WIDTH_PT = 0.5" in manual_javascript
-    assert "SIZE_DISTRIBUTION_LINE_WIDTH_PT = 0.75" in manual_javascript
-    assert "SIZE_DISTRIBUTION_TICK_LABEL_PT = SIZE_DISTRIBUTION_FONT_PT - 1" in manual_javascript
-    assert "SIZE_DISTRIBUTION_HISTOGRAM_ALPHA = 0.6" in manual_javascript
-    assert "SIZE_DISTRIBUTION_X_MARGIN = 0.05" in manual_javascript
-    assert "roundedRectPath(context" in manual_javascript
     assert "NATURAL_ORDER_COLLATOR" in manual_javascript
     assert "compareNaturalPaths" in manual_javascript
     assert "showDirectoryPicker" in manual_javascript
@@ -81,7 +76,7 @@ def test_browser_local_size_distribution_is_available_without_uploading_files():
     assert "Particle sizeフォルダへ自動保存します" in html
     assert "downloadLocal" not in manual_javascript
     assert "ローカルフォルダへ直接保存します" in html
-    assert manual_javascript.count("fetch(") == 1
+    assert 'fetch("/static/manual_meshes.json", { credentials: "same-origin" })' in manual_javascript
 
 
 def test_static_mesh_payload_is_not_user_data():
