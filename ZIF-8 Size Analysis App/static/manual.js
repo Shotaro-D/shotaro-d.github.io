@@ -40,6 +40,15 @@ const SHAPE_SYMBOLS = {
   cube: "□",
 };
 
+const SIZE_DISTRIBUTION_SHAPE_ORDER = Object.keys(SHAPE_LABELS);
+const SIZE_DISTRIBUTION_FIGURE = {
+  width: Math.round(60 / 25.4 * 900),
+  height: Math.round(80 / 25.4 * 900),
+  dpi: 900,
+};
+const SIZE_DISTRIBUTION_FONT_PX = 7 * SIZE_DISTRIBUTION_FIGURE.dpi / 72;
+const SIZE_DISTRIBUTION_TARGET_BIN_COUNT = 20;
+
 // Shape colours are deliberately distinct from the yellow selection colour.
 // RD keeps the original turquoise; chamfered cubes use orange and cubes use
 // purple so the same identity is visible in the palette, particle list,
@@ -103,6 +112,8 @@ const state = {
   localSessions: new Map(),
   localImageInspections: new Map(),
   localStarted: false,
+  sizeDistributionLoading: false,
+  sizeDistributionPayload: null,
 };
 
 const dom = {};
@@ -136,7 +147,7 @@ async function startManualApp() {
 
 function cacheDom() {
   const ids = [
-    "connectionStatus", "openTiffButton", "reloadButton", "importJsonButton", "importJsonInput", "saveJsonButton", "savePngButton", "saveJpegButton", "saveTxtButton",
+    "connectionStatus", "openTiffButton", "reloadButton", "importJsonButton", "importJsonInput", "saveJsonButton", "savePngButton", "saveJpegButton", "saveTxtButton", "sizeDistributionButton",
     "summaryCount", "summaryCountDetail", "summaryMean", "summaryStd", "summaryCv", "summaryScale",
     "scaleBadge", "scaleMarker", "scalePixels", "scaleConfidence", "scaleMethod",
     "scaleMarkerInput", "scalePixelsInput", "scaleVerificationNote", "verifyScaleButton",
@@ -149,7 +160,7 @@ function cacheDom() {
     "qualityWarning", "includeStatisticsInput", "exclusionReasonField", "exclusionReasonInput",
     "particleNotes", "commitParticleButton", "commitParticleButtonLabel", "cancelEditButton", "deleteParticleButton",
     "folderInput", "tiffDialog", "closeTiffDialogButton", "refreshTiffIndexButton", "cancelTiffButton", "confirmTiffButton",
-    "tiffImageList", "tiffDialogStatus", "toastRegion", "shortcutPanel", "shortcutToggleButton",
+    "tiffImageList", "tiffDialogStatus", "sizeDistributionDialog", "refreshSizeDistributionButton", "closeSizeDistributionDialogButton", "cancelSizeDistributionButton", "saveSizeDistributionCsvButton", "sizeDistributionDialogStatus", "sizeDistributionList", "toastRegion", "shortcutPanel", "shortcutToggleButton",
     "shortcutList", "shortcutCloseButton",
   ];
   for (const id of ids) dom[id] = document.getElementById(id);
@@ -170,6 +181,11 @@ function bindEvents() {
   dom.savePngButton.addEventListener("click", () => saveArtifact("png"));
   dom.saveJpegButton.addEventListener("click", () => saveArtifact("jpeg"));
   dom.saveTxtButton.addEventListener("click", () => saveArtifact("txt"));
+  dom.sizeDistributionButton.addEventListener("click", openSizeDistributionDialog);
+  dom.refreshSizeDistributionButton.addEventListener("click", refreshSizeDistribution);
+  dom.closeSizeDistributionDialogButton.addEventListener("click", closeSizeDistributionDialog);
+  dom.cancelSizeDistributionButton.addEventListener("click", closeSizeDistributionDialog);
+  dom.saveSizeDistributionCsvButton.addEventListener("click", saveSizeDistributionCsv);
   dom.verifyScaleButton.addEventListener("click", verifyOrUpdateScale);
   dom.shapePalette.addEventListener("click", onShapePaletteClick);
   dom.newParticleButton.addEventListener("click", startDraft);
@@ -315,6 +331,15 @@ function isSupportedLocalImageFile(file) {
 
 function localImageStem(file) {
   return String(file?.name || "").replace(/\.(tif|tiff|bmp)$/i, "");
+}
+
+function localAnalysisRun(file) {
+  const pathParts = normalisedFilePath(file).split("/").filter(Boolean);
+  pathParts.pop();
+  const folder = [...pathParts].reverse().find((part) => /^mlzif/i.test(part));
+  if (folder) return folder;
+  const stemMatch = localImageStem(file).match(/^(MLZIF[^_]+)/i);
+  return stemMatch ? stemMatch[1] : null;
 }
 
 function localImageFormat(file) {
@@ -1029,6 +1054,360 @@ function localSummary(particles = []) {
   };
 }
 
+function localShapeKey(particle) {
+  const raw = String(particle?.shape || particle?.shape_label || "")
+    .trim()
+    .toLowerCase()
+    .replaceAll("_", " ")
+    .replaceAll("-", " ");
+  const aliases = {
+    "rhombic dodecahedron": "rhombic_dodecahedron",
+    "chamfered cube": "chamfered_cube",
+    cube: "cube",
+  };
+  return aliases[raw] || null;
+}
+
+function localAnalysisRunSortKey(value) {
+  const digits = String(value).match(/\d+/g)?.join("") || "";
+  return [digits ? Number(digits) : -1, String(value).toLowerCase()];
+}
+
+function compareLocalAnalysisRuns(left, right) {
+  const leftKey = localAnalysisRunSortKey(left);
+  const rightKey = localAnalysisRunSortKey(right);
+  return leftKey[0] - rightKey[0] || leftKey[1].localeCompare(rightKey[1]);
+}
+
+function numberStats(values) {
+  const data = values.filter((value) => Number.isFinite(Number(value))).map(Number);
+  if (!data.length) {
+    return {
+      count: 0,
+      mean: null,
+      standardDeviation: null,
+      cvPercent: null,
+      median: null,
+    };
+  }
+  const mean = data.reduce((sum, value) => sum + value, 0) / data.length;
+  const variance = data.reduce((sum, value) => sum + (value - mean) ** 2, 0) / data.length;
+  const standardDeviation = Math.sqrt(Math.max(0, variance));
+  const sorted = [...data].sort((left, right) => left - right);
+  const middle = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2
+    ? sorted[middle]
+    : (sorted[middle - 1] + sorted[middle]) / 2;
+  return {
+    count: data.length,
+    mean,
+    standardDeviation,
+    cvPercent: mean > 0 ? 100 * standardDeviation / mean : null,
+    median,
+  };
+}
+
+function collectLocalSizeDistributionRuns() {
+  const runs = new Map();
+  for (const imageFile of localImageFiles()) {
+    const imageId = normalisedFilePath(imageFile);
+    const inspection = state.localImageInspections.get(imageId);
+    const session = inspection?.session || state.localSessions.get(imageId);
+    const analysisRun = localAnalysisRun(imageFile);
+    if (!session || !analysisRun || !Array.isArray(session.particles)) continue;
+    if (!runs.has(analysisRun)) {
+      runs.set(analysisRun, {
+        analysisRun,
+        diameters: [],
+        byShape: new Map(),
+      });
+    }
+    const run = runs.get(analysisRun);
+    for (const particle of session.particles) {
+      if (!particle || particle.included_in_statistics === false) continue;
+      const diameter = Number(particle.equivalent_diameter_nm);
+      if (!Number.isFinite(diameter) || diameter < 0) continue;
+      run.diameters.push(diameter);
+      const shape = localShapeKey(particle);
+      if (!shape) continue;
+      if (!run.byShape.has(shape)) run.byShape.set(shape, []);
+      run.byShape.get(shape).push(diameter);
+    }
+  }
+  return [...runs.values()].sort((left, right) => compareLocalAnalysisRuns(left.analysisRun, right.analysisRun));
+}
+
+function calculateNiceHistogramBins(values) {
+  const data = values.map(Number);
+  const dataMin = Math.min(...data);
+  const dataMax = Math.max(...data);
+  const dataRange = dataMax - dataMin;
+  if (!(dataRange > 0)) {
+    const epsilon = Math.max(1e-9, Math.abs(dataMin) * 0.01);
+    return [dataMin - epsilon, dataMax + epsilon];
+  }
+  const idealWidth = dataRange / SIZE_DISTRIBUTION_TARGET_BIN_COUNT;
+  const magnitude = 10 ** Math.floor(Math.log10(idealWidth));
+  const normalisedWidth = idealWidth / magnitude;
+  const niceNumbers = [1, 2, 2.5, 5, 10];
+  const niceWidth = niceNumbers.reduce((best, candidate) => (
+    Math.abs(candidate - normalisedWidth) < Math.abs(best - normalisedWidth) ? candidate : best
+  ));
+  const binWidth = niceWidth * magnitude;
+  const binStart = Math.floor(dataMin / binWidth) * binWidth;
+  const binEnd = Math.ceil(dataMax / binWidth) * binWidth;
+  const bins = [];
+  for (let value = binStart; value <= binEnd + binWidth * 0.001; value += binWidth) {
+    bins.push(Number(value.toPrecision(14)));
+  }
+  if (bins.length < 2) bins.push(binStart + binWidth);
+  return bins;
+}
+
+function plotNumber(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "—";
+  if (Math.abs(number) >= 1000 || (Math.abs(number) > 0 && Math.abs(number) < 0.1)) {
+    return number.toExponential(1);
+  }
+  return number.toLocaleString("en-US", { maximumFractionDigits: 1 });
+}
+
+function drawSizeDistributionPng(analysisRun, diameters) {
+  const canvas = document.createElement("canvas");
+  canvas.width = SIZE_DISTRIBUTION_FIGURE.width;
+  canvas.height = SIZE_DISTRIBUTION_FIGURE.height;
+  const context = canvas.getContext("2d", { alpha: false });
+  if (!context) throw new Error("サイズ分布PNG用Canvasを初期化できませんでした。");
+
+  const data = diameters.map(Number).filter(Number.isFinite);
+  const stats = numberStats(data);
+  const bins = calculateNiceHistogramBins(data);
+  const binWidth = bins[1] - bins[0];
+  const counts = Array.from({ length: bins.length - 1 }, () => 0);
+  for (const value of data) {
+    const rawIndex = Math.floor((value - bins[0]) / binWidth);
+    const index = Math.min(counts.length - 1, Math.max(0, rawIndex));
+    counts[index] += 1;
+  }
+  const densities = counts.map((count) => count / (data.length * binWidth));
+  const normalStart = Math.max(1e-12, Math.min(...data) * 0.8);
+  const normalEnd = Math.max(normalStart + 1e-9, Math.max(...data) * 1.2);
+  const normalValues = [];
+  const normalSteps = 600;
+  if (stats.standardDeviation > 0) {
+    for (let index = 0; index <= normalSteps; index += 1) {
+      const x = normalStart + (normalEnd - normalStart) * index / normalSteps;
+      const z = (x - stats.mean) / stats.standardDeviation;
+      const y = Math.exp(-0.5 * z * z) / (stats.standardDeviation * Math.sqrt(2 * Math.PI));
+      normalValues.push([x, y]);
+    }
+  }
+
+  const width = canvas.width;
+  const height = canvas.height;
+  const margin = { left: 360, right: 130, top: 190, bottom: 420 };
+  const plot = {
+    left: margin.left,
+    top: margin.top,
+    right: width - margin.right,
+    bottom: height - margin.bottom,
+  };
+  const xMin = Math.min(bins[0], normalStart);
+  const xMax = Math.max(bins[bins.length - 1], normalEnd);
+  const histogramMax = Math.max(...densities, 0);
+  const normalMax = Math.max(...normalValues.map(([, y]) => y), 0);
+  const yMax = Math.max(histogramMax, normalMax, 1e-12) * 1.25;
+  const xToCanvas = (value) => plot.left + (value - xMin) / (xMax - xMin) * (plot.right - plot.left);
+  const yToCanvas = (value) => plot.bottom - value / yMax * (plot.bottom - plot.top);
+  const frameWidth = 5;
+  const lineWidth = 7;
+  const tickFont = `${Math.round(SIZE_DISTRIBUTION_FONT_PX * 0.82)}px Arial, sans-serif`;
+  const labelFont = `${Math.round(SIZE_DISTRIBUTION_FONT_PX)}px Arial, sans-serif`;
+  const smallFont = `${Math.round(SIZE_DISTRIBUTION_FONT_PX * 0.82)}px Arial, sans-serif`;
+
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, width, height);
+  context.fillStyle = "#111111";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.font = `${Math.round(SIZE_DISTRIBUTION_FONT_PX * 1.15)}px Arial, sans-serif`;
+  context.fillText(analysisRun, width / 2, 78);
+
+  const yTicks = 5;
+  context.font = tickFont;
+  context.textAlign = "right";
+  context.strokeStyle = "rgba(0, 0, 0, 0.16)";
+  context.lineWidth = 2;
+  for (let index = 0; index <= yTicks; index += 1) {
+    const value = yMax * index / yTicks;
+    const y = yToCanvas(value);
+    context.beginPath();
+    context.moveTo(plot.left, y);
+    context.lineTo(plot.right, y);
+    context.stroke();
+    context.fillStyle = "#222222";
+    context.fillText(plotNumber(value), plot.left - 18, y);
+  }
+
+  context.fillStyle = "rgba(76, 155, 76, 0.60)";
+  context.strokeStyle = "#111111";
+  context.lineWidth = frameWidth;
+  for (let index = 0; index < counts.length; index += 1) {
+    const x0 = xToCanvas(bins[index]);
+    const x1 = xToCanvas(bins[index + 1]);
+    const y = yToCanvas(densities[index]);
+    context.fillRect(x0, y, Math.max(1, x1 - x0), plot.bottom - y);
+    context.strokeRect(x0, y, Math.max(1, x1 - x0), plot.bottom - y);
+  }
+
+  if (normalValues.length) {
+    context.beginPath();
+    normalValues.forEach(([x, y], index) => {
+      const px = xToCanvas(x);
+      const py = yToCanvas(y);
+      if (index === 0) context.moveTo(px, py);
+      else context.lineTo(px, py);
+    });
+    context.strokeStyle = "#0000cc";
+    context.lineWidth = lineWidth;
+    context.stroke();
+  }
+
+  context.strokeStyle = "#111111";
+  context.lineWidth = frameWidth;
+  context.strokeRect(plot.left, plot.top, plot.right - plot.left, plot.bottom - plot.top);
+  const xTicks = 5;
+  context.font = tickFont;
+  context.textAlign = "center";
+  for (let index = 0; index <= xTicks; index += 1) {
+    const value = xMin + (xMax - xMin) * index / xTicks;
+    const x = xToCanvas(value);
+    context.beginPath();
+    context.moveTo(x, plot.bottom);
+    context.lineTo(x, plot.bottom - 18);
+    context.moveTo(x, plot.top);
+    context.lineTo(x, plot.top + 18);
+    context.stroke();
+    context.fillStyle = "#222222";
+    context.fillText(plotNumber(value), x, plot.bottom + 42);
+  }
+  for (let index = 0; index <= yTicks; index += 1) {
+    const y = yToCanvas(yMax * index / yTicks);
+    context.beginPath();
+    context.moveTo(plot.left, y);
+    context.lineTo(plot.left + 18, y);
+    context.moveTo(plot.right, y);
+    context.lineTo(plot.right - 18, y);
+    context.stroke();
+  }
+
+  context.font = labelFont;
+  context.fillStyle = "#111111";
+  context.textAlign = "center";
+  context.fillText("Area-equivalent diameter [nm]", (plot.left + plot.right) / 2, height - 112);
+  context.save();
+  context.translate(85, (plot.top + plot.bottom) / 2);
+  context.rotate(-Math.PI / 2);
+  context.fillText("Number-based density [nm⁻¹]", 0, 0);
+  context.restore();
+
+  if (normalValues.length) {
+    const legendX = plot.left + 22;
+    const legendY = plot.top + 42;
+    context.strokeStyle = "#0000cc";
+    context.lineWidth = lineWidth;
+    context.beginPath();
+    context.moveTo(legendX, legendY);
+    context.lineTo(legendX + 55, legendY);
+    context.stroke();
+    context.fillStyle = "#111111";
+    context.font = smallFont;
+    context.textAlign = "left";
+    context.fillText("Normal fit", legendX + 70, legendY);
+  }
+
+  const cvText = stats.cvPercent == null ? "n/a" : `${stats.cvPercent.toFixed(1)}%`;
+  const statLines = [
+    `n = ${stats.count.toLocaleString("en-US")}`,
+    `Average = ${stats.mean.toFixed(1)} nm`,
+    `1σ = ${stats.standardDeviation.toFixed(1)} nm`,
+    `CV = ${cvText}`,
+    `D50 = ${stats.median.toFixed(1)} nm`,
+  ];
+  const boxWidth = 430;
+  const boxHeight = 36 + statLines.length * 43;
+  const boxLeft = plot.right - boxWidth - 18;
+  const boxTop = plot.top + 20;
+  context.fillStyle = "rgba(255, 255, 255, 0.92)";
+  context.strokeStyle = "#777777";
+  context.lineWidth = frameWidth;
+  context.fillRect(boxLeft, boxTop, boxWidth, boxHeight);
+  context.strokeRect(boxLeft, boxTop, boxWidth, boxHeight);
+  context.fillStyle = "#111111";
+  context.font = smallFont;
+  context.textAlign = "right";
+  statLines.forEach((line, index) => context.fillText(line, boxLeft + boxWidth - 18, boxTop + 32 + index * 43));
+
+  return canvas.toDataURL("image/png");
+}
+
+function csvEscape(value) {
+  const text = value == null ? "" : String(value);
+  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
+function csvNumber(value) {
+  return value == null || !Number.isFinite(Number(value)) ? "" : String(Number(Number(value).toPrecision(10)));
+}
+
+function createLocalSizeDistributionCsv(runRows, shapeKeys) {
+  const columns = ["Analysis run"];
+  for (const shape of shapeKeys) {
+    const label = SHAPE_LABELS[shape] || shape;
+    columns.push(
+      `${label} Average diameter (nm)`,
+      `${label} standard deviation (nm)`,
+      `${label} CV (%)`,
+      `${label} Counts`,
+    );
+  }
+  const lines = [columns.map(csvEscape).join(",")];
+  for (const run of runRows) {
+    const values = [run.analysisRun];
+    for (const shape of shapeKeys) {
+      const stats = numberStats(run.byShape.get(shape) || []);
+      values.push(csvNumber(stats.mean), csvNumber(stats.standardDeviation), csvNumber(stats.cvPercent), stats.count);
+    }
+    lines.push(values.map(csvEscape).join(","));
+  }
+  return `\uFEFF${lines.join("\r\n")}\r\n`;
+}
+
+function createLocalSizeDistributionPayload() {
+  const runRows = collectLocalSizeDistributionRuns();
+  const shapeKeys = SIZE_DISTRIBUTION_SHAPE_ORDER.filter((shape) => runRows.some((run) => (run.byShape.get(shape) || []).length));
+  const csv = createLocalSizeDistributionCsv(runRows, shapeKeys);
+  const runs = [];
+  const skipped = [];
+  for (const run of runRows) {
+    if (run.diameters.length) {
+      runs.push({
+        analysis_run: run.analysisRun,
+        count: run.diameters.length,
+        image_url: drawSizeDistributionPng(run.analysisRun, run.diameters),
+      });
+    } else {
+      skipped.push({
+        analysis_run: run.analysisRun,
+        count: 0,
+        reason: "統計対象粒子がありません",
+      });
+    }
+  }
+  return { runs, skipped, csv };
+}
+
 function refreshLocalParticleMeasurement(particle) {
   const metrics = calculateLocalMetrics(particle);
   const projection = projectModel(particle);
@@ -1122,6 +1501,11 @@ async function localManualApi(url, options = {}) {
   if (url === "/api/manual/images" || url === "/api/manual/images/refresh") {
     const images = localImageInventory();
     return { images, current_image_id: state.currentImageFile ? normalisedFilePath(state.currentImageFile) : null, index_path: "browser-local" };
+  }
+  if (url === "/api/manual/size-distributions/refresh") {
+    if (!state.localFiles.length) throw new Error("先にローカルフォルダを選択してください。");
+    if (!state.localSessionIndexReady) await indexLocalSessions();
+    return createLocalSizeDistributionPayload();
   }
   if (url === "/api/manual/calibration") {
     const payload = JSON.parse(options.body || "{}");
@@ -1503,6 +1887,97 @@ async function openTiffDialog() {
   } finally {
     dom.openTiffButton.disabled = false;
   }
+}
+
+async function openSizeDistributionDialog() {
+  if (state.sizeDistributionLoading) return;
+  if ((state.working && state.dirty) || state.isPlacing || state.saving) {
+    toast("未保存の粒子編集を保存またはキャンセルしてからサイズ分布を集計してください。", true);
+    return;
+  }
+  if (!state.localFiles.length) {
+    toast("先にローカルフォルダを選択してください。", true);
+    dom.folderInput.click();
+    return;
+  }
+  if (typeof dom.sizeDistributionDialog.showModal === "function") dom.sizeDistributionDialog.showModal();
+  else dom.sizeDistributionDialog.setAttribute("open", "");
+  await refreshSizeDistribution();
+}
+
+function closeSizeDistributionDialog() {
+  if (typeof dom.sizeDistributionDialog.close === "function") dom.sizeDistributionDialog.close();
+  else dom.sizeDistributionDialog.removeAttribute("open");
+}
+
+async function refreshSizeDistribution() {
+  if (state.sizeDistributionLoading) return;
+  state.sizeDistributionLoading = true;
+  dom.sizeDistributionButton.disabled = true;
+  dom.refreshSizeDistributionButton.disabled = true;
+  dom.saveSizeDistributionCsvButton.disabled = true;
+  dom.sizeDistributionDialogStatus.textContent = "ローカルJSONをMLZIFフォルダ単位で集計し，PNGを生成しています。";
+  dom.sizeDistributionList.setAttribute("aria-busy", "true");
+  try {
+    const result = await apiJson(
+      "/api/manual/size-distributions/refresh",
+      { method: "POST" },
+    );
+    state.sizeDistributionPayload = result;
+    renderSizeDistributionList(result);
+    const runCount = (result.runs || []).length;
+    const skippedCount = (result.skipped || []).length;
+    const skippedLabel = skippedCount
+      ? ` ${skippedCount} runは統計対象粒子がないためスキップしました。`
+      : "";
+    dom.sizeDistributionDialogStatus.textContent = `${runCount} runのPNGを表示しています。${skippedLabel}`;
+    dom.saveSizeDistributionCsvButton.disabled = !result.csv;
+    toast(`サイズ分布PNGとCSVを更新しました（${runCount} run）。`);
+  } catch (error) {
+    dom.sizeDistributionDialogStatus.textContent = `サイズ分布を更新できません：${error.message}`;
+    toast(`サイズ分布を更新できません：${error.message}`, true);
+  } finally {
+    state.sizeDistributionLoading = false;
+    dom.sizeDistributionButton.disabled = false;
+    dom.refreshSizeDistributionButton.disabled = false;
+    dom.sizeDistributionList.removeAttribute("aria-busy");
+  }
+}
+
+function renderSizeDistributionList(result) {
+  const cards = (result?.runs || []).map((run) => {
+    const analysisRun = escapeHtml(run.analysis_run);
+    const imageUrl = escapeHtml(run.image_url);
+    return `
+      <figure class="size-distribution-card">
+        <img src="${imageUrl}" alt="${analysisRun}の個数基準サイズ分布" loading="lazy">
+        <figcaption>
+          <strong>${analysisRun}</strong>
+          <span>n = ${integer(run.count)}</span>
+          <a class="size-distribution-download" href="${imageUrl}" download="${analysisRun}_size_distribution.png">PNG保存</a>
+        </figcaption>
+      </figure>`;
+  }).join("");
+  const skipped = (result?.skipped || []).map((run) => `
+    <li><strong>${escapeHtml(run.analysis_run)}</strong>：${escapeHtml(run.reason || "表示対象外")}</li>
+  `).join("");
+  const skippedBlock = skipped
+    ? `<div class="size-distribution-skipped">
+         <strong>表示対象外</strong>
+         <ul>${skipped}</ul>
+       </div>`
+    : "";
+  dom.sizeDistributionList.innerHTML = cards || '<p class="manual-dialog-empty">表示できるサイズ分布PNGがありません。</p>';
+  if (skippedBlock) dom.sizeDistributionList.insertAdjacentHTML("beforeend", skippedBlock);
+}
+
+function saveSizeDistributionCsv() {
+  if (!state.sizeDistributionPayload?.csv) return;
+  downloadLocal(
+    new Blob([state.sizeDistributionPayload.csv], { type: "text/csv;charset=utf-8" }),
+    "shape_statistics_by_shape.csv",
+  );
+  toast("サイズ統計CSVをブラウザーからローカル保存しました。");
 }
 
 async function loadTiffInventory(refresh) {
