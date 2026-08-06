@@ -51,6 +51,7 @@
       <button id="savePngButton" class="button button-secondary" type="button">PNG保存</button>
       <button id="saveJpegButton" class="button button-secondary" type="button">JPEG保存</button>
       <button id="saveTxtButton" class="button button-primary" type="button">TXT保存</button>
+      <button id="sizeDistributionButton" class="button button-secondary" type="button">サイズ分布</button>
       <span id="userEmail" class="manual-user-email" aria-label="ログイン中のユーザー"></span>
       <button id="logoutButton" class="button button-quiet" type="button">ログアウト</button>
     </div>
@@ -309,6 +310,26 @@
     <div class="manual-dialog-actions">
       <button id="cancelTiffButton" class="button button-secondary" type="button">キャンセル</button>
       <button id="confirmTiffButton" class="button button-primary" type="button">選択した画像を開く</button>
+    </div>
+  </dialog>
+
+  <dialog id="sizeDistributionDialog" class="manual-dialog size-distribution-dialog" aria-labelledby="sizeDistributionDialogHeading">
+    <div class="manual-dialog-header">
+      <div>
+        <p class="eyebrow">NUMBER-BASED SIZE DISTRIBUTION</p>
+        <h2 id="sizeDistributionDialogHeading">個数基準サイズ分布</h2>
+      </div>
+      <div class="manual-dialog-header-actions">
+        <button id="refreshSizeDistributionButton" class="manual-dialog-refresh" type="button">↻ 再集計</button>
+        <button id="closeSizeDistributionDialogButton" class="manual-dialog-close" type="button" aria-label="閉じる">×</button>
+      </div>
+    </div>
+    <p class="manual-dialog-note">選択したローカルフォルダ内のJSONをMLZIFフォルダ（Analysis run）単位で集計し，個数基準ヒストグラムと正規分布フィット線をブラウザー内で生成します。BMP／TIFFごとの校正済み粒径を使用し，データはサーバーへ送信しません。</p>
+    <p id="sizeDistributionDialogStatus" class="manual-dialog-status" role="status"></p>
+    <div id="sizeDistributionList" class="size-distribution-list" aria-live="polite"></div>
+    <div class="manual-dialog-actions">
+      <button id="cancelSizeDistributionButton" class="button button-secondary" type="button">閉じる</button>
+      <button id="saveSizeDistributionCsvButton" class="button button-primary" type="button" disabled>CSV保存</button>
     </div>
   </dialog>
 

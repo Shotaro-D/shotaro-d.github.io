@@ -37,6 +37,21 @@ def test_browser_reads_and_saves_user_files_without_uploading_them():
     assert "サーバーへ送信されません" in html
 
 
+def test_browser_local_size_distribution_is_available_without_uploading_files():
+    manual_javascript = (PROJECT_ROOT / "static" / "manual.js").read_text(encoding="utf-8")
+    html = (PROJECT_ROOT / "templates" / "index.html").read_text(encoding="utf-8")
+    assert 'id="sizeDistributionButton"' in html
+    assert 'id="sizeDistributionDialog"' in html
+    assert 'id="saveSizeDistributionCsvButton"' in html
+    assert "createLocalSizeDistributionPayload" in manual_javascript
+    assert "drawSizeDistributionPng" in manual_javascript
+    assert "Number-based density" in manual_javascript
+    assert "Normal fit" in manual_javascript
+    assert "saveSizeDistributionCsv" in manual_javascript
+    assert "/api/manual/size-distributions/refresh" in manual_javascript
+    assert manual_javascript.count("fetch(") == 1
+
+
 def test_static_mesh_payload_is_not_user_data():
     payload = json.loads((PROJECT_ROOT / "static" / "manual_meshes.json").read_text(encoding="utf-8"))
     assert set(payload) == {"meshes", "chamfered_meshes"}
