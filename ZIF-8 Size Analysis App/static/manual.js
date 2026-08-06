@@ -118,11 +118,13 @@ async function startManualApp() {
     state.meshes = meshPayload.meshes || {};
     state.chamferedMeshes = meshPayload.chamfered_meshes || {};
     setConnection("online", "ローカルのみ");
+    dom.manualCanvasMessage.querySelector(".spinner").hidden = true;
     dom.manualCanvasMessage.querySelector("span:last-child").textContent = "ローカルフォルダからTIFFを選択してください。";
     dom.manualCanvasMessage.classList.remove("is-error");
     dom.manualCanvasMessage.hidden = false;
   } catch (error) {
     setConnection("error", "読込失敗");
+    dom.manualCanvasMessage.querySelector(".spinner").hidden = true;
     dom.manualCanvasMessage.classList.add("is-error");
     dom.manualCanvasMessage.querySelector("span:last-child").textContent = error.message;
     toast(error.message, true);
@@ -361,8 +363,14 @@ function setLocalFiles(files) {
   state.dirty = false;
   dom.manualCanvasMessage.hidden = false;
   dom.manualCanvasMessage.classList.remove("is-error");
+  dom.manualCanvasMessage.querySelector(".spinner").hidden = false;
   dom.manualCanvasMessage.querySelector("span:last-child").textContent = "ローカルTIFF一覧を作成しています。";
-  loadTiffInventory(false).catch((error) => toast(`TIFF一覧を作成できません：${error.message}`, true));
+  loadTiffInventory(false).catch((error) => {
+    dom.manualCanvasMessage.classList.add("is-error");
+    dom.manualCanvasMessage.querySelector(".spinner").hidden = true;
+    dom.manualCanvasMessage.querySelector("span:last-child").textContent = `TIFF一覧を作成できません：${error.message}`;
+    toast(`TIFF一覧を作成できません：${error.message}`, true);
+  });
 }
 
 function findLocalSidecar(imageFile) {
@@ -940,6 +948,14 @@ async function loadTiffInventory(refresh) {
   const directoryCount = groupedImages.length;
   const sourceLabel = refresh ? "選択フォルダを再読み込みしました" : "選択フォルダから読み込みました";
   dom.tiffDialogStatus.textContent = `${directoryCount}ディレクトリ，${state.availableImages.length}画像 · ${sourceLabel}。`;
+  if (!state.image) {
+    dom.manualCanvasMessage.classList.remove("is-error");
+    dom.manualCanvasMessage.querySelector(".spinner").hidden = true;
+    dom.manualCanvasMessage.querySelector("span:last-child").textContent = state.availableImages.length
+      ? "TIFF一覧から画像を選択してください。"
+      : "選択フォルダにTIFFが見つかりません。";
+    dom.manualCanvasMessage.hidden = false;
+  }
 }
 
 async function refreshTiffIndex() {
@@ -1157,6 +1173,7 @@ async function openSelectedTiff() {
     state.saving = false;
     state.pointer = null;
     dom.manualCanvas.classList.remove("is-placing", "is-dragging");
+    dom.manualCanvasMessage.hidden = true;
     renderSession();
     showActualPixels();
     setConnection("online", "ローカルのみ");
