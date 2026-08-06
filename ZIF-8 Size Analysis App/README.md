@@ -25,7 +25,7 @@
 5. 必要に応じてJSON，TXT，PNG，JPEGをダウンロードする。
 
 画面上部の「サイズ分布」から，選択したローカルフォルダ内の解析JSONをMLZIFフォルダ（Analysis run）単位で集約できる。
-「↻ 再集計」で最新のローカルJSONを読み直し，次をブラウザー内で生成する。
+「サイズ分布」または「↻ 再集計」で最新のローカルJSONを読み直し，次をブラウザー内で生成して，選択したローカルフォルダ内の`Particle size`フォルダ（存在しない場合は作成）へ自動保存する。
 
 - `shape_statistics_by_shape.csv`：1行をMLZIFフォルダとし，形状ごとにAverage，standard deviation，CV，Countsの列を作成する。
 - サイズ分布PNG：個数基準ヒストグラム，正規分布フィット線，Average，1σ，CV，D50を表示する。

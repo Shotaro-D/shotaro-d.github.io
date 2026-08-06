@@ -61,6 +61,10 @@ def test_browser_local_size_distribution_is_available_without_uploading_files():
     assert "createWritable" in manual_javascript
     assert "saveBlobToLocalDirectory" in manual_javascript
     assert "dataUrlToBlob" in manual_javascript
+    assert 'SIZE_DISTRIBUTION_OUTPUT_DIRECTORY = "Particle size"' in manual_javascript
+    assert "saveSizeDistributionOutputs" in manual_javascript
+    assert "Particle sizeフォルダへCSV 1件とPNG" in manual_javascript
+    assert "Particle sizeフォルダへ自動保存します" in html
     assert "downloadLocal" not in manual_javascript
     assert "ローカルフォルダへ直接保存します" in html
     assert manual_javascript.count("fetch(") == 1

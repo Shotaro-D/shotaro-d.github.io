@@ -48,6 +48,7 @@ const SIZE_DISTRIBUTION_FIGURE = {
 };
 const SIZE_DISTRIBUTION_FONT_PT = 7;
 const SIZE_DISTRIBUTION_TICK_LABEL_PT = SIZE_DISTRIBUTION_FONT_PT - 1;
+const SIZE_DISTRIBUTION_OUTPUT_DIRECTORY = "Particle size";
 const SIZE_DISTRIBUTION_FRAME_WIDTH_PT = 0.5;
 const SIZE_DISTRIBUTION_LINE_WIDTH_PT = 0.75;
 const SIZE_DISTRIBUTION_TICK_LENGTH_PT = 3.5;
@@ -1905,7 +1906,7 @@ function currentImageDirectoryPath() {
   return state.currentImageFile ? fileDirectory(state.currentImageFile) : "";
 }
 
-async function writableLocalDirectory(relativeDirectory = "") {
+async function writableLocalDirectory(relativeDirectory = "", options = {}) {
   let directoryHandle = state.localDirectoryHandle;
   if (!directoryHandle) {
     if (typeof window.showDirectoryPicker !== "function") {
@@ -1914,12 +1915,12 @@ async function writableLocalDirectory(relativeDirectory = "") {
     directoryHandle = await window.showDirectoryPicker({ mode: "readwrite" });
     state.localDirectoryHandle = directoryHandle;
   }
-  const options = { mode: "readwrite" };
+  const permissionOptions = { mode: "readwrite" };
   let permission = typeof directoryHandle.queryPermission === "function"
-    ? await directoryHandle.queryPermission(options)
+    ? await directoryHandle.queryPermission(permissionOptions)
     : "prompt";
   if (permission !== "granted" && typeof directoryHandle.requestPermission === "function") {
-    permission = await directoryHandle.requestPermission(options);
+    permission = await directoryHandle.requestPermission(permissionOptions);
   }
   if (permission !== "granted") {
     throw new Error("読み込んだローカルフォルダへの書き込みが許可されませんでした。");
@@ -1929,13 +1930,18 @@ async function writableLocalDirectory(relativeDirectory = "") {
     .filter(Boolean);
   if (pathParts[0] === directoryHandle.name) pathParts.shift();
   for (const part of pathParts) {
-    directoryHandle = await directoryHandle.getDirectoryHandle(part);
+    directoryHandle = await directoryHandle.getDirectoryHandle(part, {
+      create: Boolean(options.create),
+    });
   }
   return directoryHandle;
 }
 
 async function saveBlobToLocalDirectory(blob, filename, options = {}) {
-  const directoryHandle = await writableLocalDirectory(options.relativeDirectory || "");
+  const directoryHandle = options.directoryHandle
+    || await writableLocalDirectory(options.relativeDirectory || "", {
+      create: options.createDirectory,
+    });
   const fileHandle = await directoryHandle.getFileHandle(filename, { create: true });
   const writable = await fileHandle.createWritable();
   try {
@@ -1978,14 +1984,32 @@ async function onSizeDistributionListClick(event) {
     await saveBlobToLocalDirectory(
       dataUrlToBlob(run.image_url),
       `${safeExportFilename(analysisRun)}_size_distribution.png`,
+      { relativeDirectory: SIZE_DISTRIBUTION_OUTPUT_DIRECTORY, createDirectory: true },
     );
-    toast(`${analysisRun}のPNGを読み込んだローカルフォルダへ保存しました。`);
+    toast(`${analysisRun}のPNGをParticle sizeフォルダへ再保存しました。`);
   } catch (error) {
     toast(`PNGを保存できません：${error.message}`, true);
   } finally {
     link.dataset.saving = "false";
     link.textContent = originalLabel;
   }
+}
+
+async function saveSizeDistributionOutputs(payload) {
+  if (!payload?.csv) throw new Error("保存するサイズ統計CSVがありません。");
+  const outputDirectory = await writableLocalDirectory(SIZE_DISTRIBUTION_OUTPUT_DIRECTORY, { create: true });
+  await saveBlobToLocalDirectory(
+    new Blob([payload.csv], { type: "text/csv;charset=utf-8" }),
+    "shape_statistics_by_shape.csv",
+    { directoryHandle: outputDirectory },
+  );
+  const pngRuns = (payload.runs || []).filter((run) => run?.image_url);
+  await Promise.all(pngRuns.map((run) => saveBlobToLocalDirectory(
+    dataUrlToBlob(run.image_url),
+    `${safeExportFilename(run.analysis_run)}_size_distribution.png`,
+    { directoryHandle: outputDirectory },
+  )));
+  return { pngCount: pngRuns.length };
 }
 
 function manualSessionToTxt(session) {
@@ -2165,9 +2189,17 @@ async function refreshSizeDistribution() {
     const skippedLabel = skippedCount
       ? ` ${skippedCount} runは統計対象粒子がないためスキップしました。`
       : "";
-    dom.sizeDistributionDialogStatus.textContent = `${runCount} runのPNGを表示しています。${skippedLabel}`;
+    let outputLabel;
+    try {
+      const { pngCount } = await saveSizeDistributionOutputs(result);
+      outputLabel = `Particle sizeフォルダへCSV 1件とPNG ${pngCount}件を自動保存しました。`;
+      toast(`サイズ分布をParticle sizeフォルダへ自動保存しました（CSV 1件，PNG ${pngCount}件）。`);
+    } catch (error) {
+      outputLabel = `Particle sizeフォルダへ自動保存できませんでした：${error.message}`;
+      toast(outputLabel, true);
+    }
+    dom.sizeDistributionDialogStatus.textContent = `${runCount} runのPNGを表示しています。${outputLabel}${skippedLabel}`;
     dom.saveSizeDistributionCsvButton.disabled = !result.csv;
-    toast(`サイズ分布PNGとCSVを更新しました（${runCount} run）。`);
   } catch (error) {
     dom.sizeDistributionDialogStatus.textContent = `サイズ分布を更新できません：${error.message}`;
     toast(`サイズ分布を更新できません：${error.message}`, true);
@@ -2189,7 +2221,7 @@ function renderSizeDistributionList(result) {
         <figcaption>
           <strong>${analysisRun}</strong>
           <span>n = ${integer(run.count)}</span>
-          <a class="size-distribution-download" href="${imageUrl}" data-size-distribution-download="${analysisRun}">PNG保存</a>
+          <a class="size-distribution-download" href="${imageUrl}" data-size-distribution-download="${analysisRun}">PNGを再保存</a>
         </figcaption>
       </figure>`;
   }).join("");
@@ -2213,8 +2245,9 @@ async function saveSizeDistributionCsv() {
     await saveBlobToLocalDirectory(
       new Blob([state.sizeDistributionPayload.csv], { type: "text/csv;charset=utf-8" }),
       "shape_statistics_by_shape.csv",
+      { relativeDirectory: SIZE_DISTRIBUTION_OUTPUT_DIRECTORY, createDirectory: true },
     );
-    toast("サイズ統計CSVを読み込んだローカルフォルダへ保存しました。");
+    toast("サイズ統計CSVをParticle sizeフォルダへ再保存しました。");
   } catch (error) {
     toast(`CSVを保存できません：${error.message}`, true);
   } finally {
