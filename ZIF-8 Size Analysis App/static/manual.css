@@ -1232,8 +1232,7 @@
   min-width: 0;
 }
 
-.manual-tiff-main strong,
-.manual-tiff-main small {
+.manual-tiff-main strong {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1241,7 +1240,14 @@
 }
 
 .manual-tiff-main strong { font-size: 12px; }
-.manual-tiff-main small { color: var(--ink-soft); font-size: 9px; }
+.manual-tiff-main small {
+  display: block;
+  margin-top: 1px;
+  color: var(--ink-soft);
+  font-size: 9px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
 
 .manual-tiff-current {
   padding: 2px 6px;
