@@ -324,12 +324,12 @@
         <button id="closeSizeDistributionDialogButton" class="manual-dialog-close" type="button" aria-label="閉じる">×</button>
       </div>
     </div>
-    <p class="manual-dialog-note">選択したローカルフォルダ内のJSONをMLZIFフォルダ（Analysis run）単位で集計し，個数基準ヒストグラムと正規分布フィット線をブラウザー内で生成します。BMP／TIFFごとの校正済み粒径を使用し，データはサーバーへ送信しません。</p>
+    <p class="manual-dialog-note">選択したローカルフォルダ内のJSONをMLZIFフォルダ（Analysis run）単位で集計し，個数基準ヒストグラムと正規分布フィット線をブラウザー内で生成します。CSVとPNGは選択したディレクトリ内のParticle sizeフォルダへ自動保存します。BMP／TIFFごとの校正済み粒径を使用し，データはサーバーへ送信しません。</p>
     <p id="sizeDistributionDialogStatus" class="manual-dialog-status" role="status"></p>
     <div id="sizeDistributionList" class="size-distribution-list" aria-live="polite"></div>
     <div class="manual-dialog-actions">
       <button id="cancelSizeDistributionButton" class="button button-secondary" type="button">閉じる</button>
-      <button id="saveSizeDistributionCsvButton" class="button button-primary" type="button" disabled>CSV保存</button>
+      <button id="saveSizeDistributionCsvButton" class="button button-primary" type="button" disabled>CSVを再保存</button>
     </div>
   </dialog>
 
