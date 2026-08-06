@@ -62,6 +62,10 @@ const SIZE_DISTRIBUTION_TARGET_BIN_COUNT = 20;
 const SIZE_DISTRIBUTION_HISTOGRAM_Y_MARGIN = 1.25;
 const SIZE_DISTRIBUTION_HISTOGRAM_ALPHA = 0.6;
 const SIZE_DISTRIBUTION_X_MARGIN = 0.05;
+const NATURAL_ORDER_COLLATOR = new Intl.Collator(undefined, {
+  numeric: true,
+  sensitivity: "base",
+});
 
 // Shape colours are deliberately distinct from the yellow selection colour.
 // RD keeps the original turquoise; chamfered cubes use orange and cubes use
@@ -118,8 +122,10 @@ const state = {
   shortcutsOpen: false,
   localFiles: [],
   localFileMap: new Map(),
+  localFilePaths: new WeakMap(),
   localJsonFilesByName: new Map(),
   localSessionIndexReady: false,
+  localDirectoryHandle: null,
   currentImageFile: null,
   currentImageBuffer: null,
   currentImageHash: "",
@@ -184,7 +190,7 @@ function cacheDom() {
 
 function bindEvents() {
   dom.openTiffButton.addEventListener("click", () => {
-    if (!state.localFiles.length) dom.folderInput.click();
+    if (!state.localFiles.length) selectLocalFolder();
     else openTiffDialog();
   });
   dom.folderInput.addEventListener("change", (event) => setLocalFiles(Array.from(event.target.files || [])));
@@ -199,7 +205,8 @@ function bindEvents() {
   dom.refreshSizeDistributionButton.addEventListener("click", refreshSizeDistribution);
   dom.closeSizeDistributionDialogButton.addEventListener("click", closeSizeDistributionDialog);
   dom.cancelSizeDistributionButton.addEventListener("click", closeSizeDistributionDialog);
-  dom.saveSizeDistributionCsvButton.addEventListener("click", saveSizeDistributionCsv);
+  dom.saveSizeDistributionCsvButton.addEventListener("click", () => saveSizeDistributionCsv());
+  dom.sizeDistributionList.addEventListener("click", onSizeDistributionListClick);
   dom.verifyScaleButton.addEventListener("click", verifyOrUpdateScale);
   dom.shapePalette.addEventListener("click", onShapePaletteClick);
   dom.newParticleButton.addEventListener("click", startDraft);
@@ -321,7 +328,7 @@ async function apiJson(url, options = {}) {
 }
 
 function normalisedFilePath(file) {
-  return String(file?.webkitRelativePath || file?.name || "").replaceAll("\\", "/");
+  return String(state.localFilePaths?.get(file) || file?.webkitRelativePath || file?.name || "").replaceAll("\\", "/");
 }
 
 function fileDirectory(file) {
@@ -337,6 +344,41 @@ function isExcludedLocalPath(path) {
 
 function localFileByPath(path) {
   return state.localFileMap.get(String(path).replaceAll("\\", "/")) || null;
+}
+
+async function collectLocalDirectoryFiles(directoryHandle, prefix = "") {
+  const entries = [];
+  for await (const entry of directoryHandle.values()) {
+    const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.kind === "file") {
+      entries.push({ file: await entry.getFile(), relativePath });
+      continue;
+    }
+    if (entry.kind === "directory") {
+      entries.push(...await collectLocalDirectoryFiles(entry, relativePath));
+    }
+  }
+  return entries;
+}
+
+async function selectLocalFolder() {
+  if (typeof window.showDirectoryPicker !== "function") {
+    dom.folderInput.click();
+    return;
+  }
+  dom.openTiffButton.disabled = true;
+  try {
+    const directoryHandle = await window.showDirectoryPicker({ mode: "readwrite" });
+    const entries = await collectLocalDirectoryFiles(directoryHandle);
+    const pathMap = new Map(entries.map((entry) => [entry.file, entry.relativePath]));
+    setLocalFiles(entries.map((entry) => entry.file), { directoryHandle, pathMap });
+  } catch (error) {
+    if (error?.name !== "AbortError") {
+      toast(`ローカルフォルダを読み込めません：${error.message}`, true);
+    }
+  } finally {
+    dom.openTiffButton.disabled = false;
+  }
 }
 
 function isSupportedLocalImageFile(file) {
@@ -361,7 +403,9 @@ function localImageFormat(file) {
 }
 
 function localImageFiles() {
-  return state.localFiles.filter((file) => isSupportedLocalImageFile(file) && !isExcludedLocalPath(normalisedFilePath(file)));
+  return state.localFiles
+    .filter((file) => isSupportedLocalImageFile(file) && !isExcludedLocalPath(normalisedFilePath(file)))
+    .sort((left, right) => compareNaturalPaths(normalisedFilePath(left), normalisedFilePath(right)));
 }
 
 function localImageInventory() {
@@ -420,8 +464,13 @@ function localImageInventory() {
   });
 }
 
-function setLocalFiles(files) {
+function setLocalFiles(files, options = {}) {
+  state.localDirectoryHandle = options.directoryHandle || null;
+  state.localFilePaths = new WeakMap();
   state.localFiles = files.filter((file) => file && file.name);
+  for (const file of state.localFiles) {
+    state.localFilePaths.set(file, options.pathMap?.get(file) || file.webkitRelativePath || file.name);
+  }
   state.localFileMap = new Map(state.localFiles.map((file) => [normalisedFilePath(file), file]));
   state.localJsonFilesByName = new Map();
   for (const file of state.localFiles) {
@@ -1085,6 +1134,13 @@ function localShapeKey(particle) {
 function localAnalysisRunSortKey(value) {
   const digits = String(value).match(/\d+/g)?.join("") || "";
   return [digits ? Number(digits) : -1, String(value).toLowerCase()];
+}
+
+function compareNaturalPaths(left, right) {
+  const leftPath = String(left ?? "");
+  const rightPath = String(right ?? "");
+  return NATURAL_ORDER_COLLATOR.compare(leftPath, rightPath)
+    || leftPath.localeCompare(rightPath);
 }
 
 function compareLocalAnalysisRuns(left, right) {
@@ -1815,15 +1871,27 @@ async function saveArtifact(kind) {
     if (!state.session || !state.image) throw new Error("先にローカルTIFFを開いてください。");
     const stem = String(state.session.image.name || "sem_image").replace(/\.(tif|tiff|bmp)$/i, "");
     if (kind === "json") {
-      downloadLocal(new Blob([JSON.stringify(state.session, null, 2)], { type: "application/json;charset=utf-8" }), `${stem}_manual_count.json`);
+      await saveBlobToLocalDirectory(
+        new Blob([JSON.stringify(state.session, null, 2)], { type: "application/json;charset=utf-8" }),
+        `${stem}_manual_count.json`,
+        { relativeDirectory: currentImageDirectoryPath() },
+      );
     } else if (kind === "txt") {
-      downloadLocal(new Blob([manualSessionToTxt(state.session)], { type: "text/plain;charset=utf-8" }), `${stem}_manual_particle_sizes.txt`);
+      await saveBlobToLocalDirectory(
+        new Blob([manualSessionToTxt(state.session)], { type: "text/plain;charset=utf-8" }),
+        `${stem}_manual_particle_sizes.txt`,
+        { relativeDirectory: currentImageDirectoryPath() },
+      );
     } else {
       const overlay = renderLocalOverlay(kind === "jpeg");
       const blob = await new Promise((resolve, reject) => overlay.toBlob((value) => value ? resolve(value) : reject(new Error("画像を書き出せませんでした。")), kind === "jpeg" ? "image/jpeg" : "image/png", kind === "jpeg" ? 0.85 : undefined));
-      downloadLocal(blob, `${stem}_manual_overlay.${kind === "jpeg" ? "jpg" : "png"}`);
+      await saveBlobToLocalDirectory(
+        blob,
+        `${stem}_manual_overlay.${kind === "jpeg" ? "jpg" : "png"}`,
+        { relativeDirectory: currentImageDirectoryPath() },
+      );
     }
-    toast(`${kind.toUpperCase()}をブラウザーからローカル保存しました。`);
+    toast(`${kind.toUpperCase()}を読み込んだローカルフォルダへ保存しました。`);
     setConnection("online", "ローカルのみ");
   } catch (error) {
     setConnection("error", "保存失敗");
@@ -1833,15 +1901,91 @@ async function saveArtifact(kind) {
   }
 }
 
-function downloadLocal(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+function currentImageDirectoryPath() {
+  return state.currentImageFile ? fileDirectory(state.currentImageFile) : "";
+}
+
+async function writableLocalDirectory(relativeDirectory = "") {
+  let directoryHandle = state.localDirectoryHandle;
+  if (!directoryHandle) {
+    if (typeof window.showDirectoryPicker !== "function") {
+      throw new Error("このブラウザーはローカルフォルダへの直接保存に対応していません。ChromeまたはEdgeをご利用ください。");
+    }
+    directoryHandle = await window.showDirectoryPicker({ mode: "readwrite" });
+    state.localDirectoryHandle = directoryHandle;
+  }
+  const options = { mode: "readwrite" };
+  let permission = typeof directoryHandle.queryPermission === "function"
+    ? await directoryHandle.queryPermission(options)
+    : "prompt";
+  if (permission !== "granted" && typeof directoryHandle.requestPermission === "function") {
+    permission = await directoryHandle.requestPermission(options);
+  }
+  if (permission !== "granted") {
+    throw new Error("読み込んだローカルフォルダへの書き込みが許可されませんでした。");
+  }
+  const pathParts = String(relativeDirectory)
+    .split("/")
+    .filter(Boolean);
+  if (pathParts[0] === directoryHandle.name) pathParts.shift();
+  for (const part of pathParts) {
+    directoryHandle = await directoryHandle.getDirectoryHandle(part);
+  }
+  return directoryHandle;
+}
+
+async function saveBlobToLocalDirectory(blob, filename, options = {}) {
+  const directoryHandle = await writableLocalDirectory(options.relativeDirectory || "");
+  const fileHandle = await directoryHandle.getFileHandle(filename, { create: true });
+  const writable = await fileHandle.createWritable();
+  try {
+    await writable.write(blob);
+    await writable.close();
+  } catch (error) {
+    await writable.abort?.();
+    throw error;
+  }
+}
+
+function dataUrlToBlob(dataUrl) {
+  const [header, encoded] = String(dataUrl || "").split(",", 2);
+  if (!header || !encoded || !header.startsWith("data:")) {
+    throw new Error("PNGデータを読み込めませんでした。");
+  }
+  const mimeMatch = header.match(/^data:([^;]+);base64$/i);
+  if (!mimeMatch) throw new Error("PNGデータ形式が正しくありません。");
+  const binary = atob(encoded);
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  return new Blob([bytes], { type: mimeMatch[1] });
+}
+
+function safeExportFilename(value) {
+  return String(value || "export").replace(/[\\/:*?"<>|]/g, "_");
+}
+
+async function onSizeDistributionListClick(event) {
+  const link = event.target.closest("[data-size-distribution-download]");
+  if (!link) return;
+  event.preventDefault();
+  if (link.dataset.saving === "true") return;
+  const analysisRun = link.dataset.sizeDistributionDownload;
+  const run = state.sizeDistributionPayload?.runs?.find((item) => item.analysis_run === analysisRun);
+  if (!run?.image_url) return;
+  link.dataset.saving = "true";
+  const originalLabel = link.textContent;
+  link.textContent = "保存中…";
+  try {
+    await saveBlobToLocalDirectory(
+      dataUrlToBlob(run.image_url),
+      `${safeExportFilename(analysisRun)}_size_distribution.png`,
+    );
+    toast(`${analysisRun}のPNGを読み込んだローカルフォルダへ保存しました。`);
+  } catch (error) {
+    toast(`PNGを保存できません：${error.message}`, true);
+  } finally {
+    link.dataset.saving = "false";
+    link.textContent = originalLabel;
+  }
 }
 
 function manualSessionToTxt(session) {
@@ -1988,7 +2132,7 @@ async function openSizeDistributionDialog() {
   }
   if (!state.localFiles.length) {
     toast("先にローカルフォルダを選択してください。", true);
-    dom.folderInput.click();
+    selectLocalFolder();
     return;
   }
   if (typeof dom.sizeDistributionDialog.showModal === "function") dom.sizeDistributionDialog.showModal();
@@ -2045,7 +2189,7 @@ function renderSizeDistributionList(result) {
         <figcaption>
           <strong>${analysisRun}</strong>
           <span>n = ${integer(run.count)}</span>
-          <a class="size-distribution-download" href="${imageUrl}" download="${analysisRun}_size_distribution.png">PNG保存</a>
+          <a class="size-distribution-download" href="${imageUrl}" data-size-distribution-download="${analysisRun}">PNG保存</a>
         </figcaption>
       </figure>`;
   }).join("");
@@ -2062,13 +2206,20 @@ function renderSizeDistributionList(result) {
   if (skippedBlock) dom.sizeDistributionList.insertAdjacentHTML("beforeend", skippedBlock);
 }
 
-function saveSizeDistributionCsv() {
+async function saveSizeDistributionCsv() {
   if (!state.sizeDistributionPayload?.csv) return;
-  downloadLocal(
-    new Blob([state.sizeDistributionPayload.csv], { type: "text/csv;charset=utf-8" }),
-    "shape_statistics_by_shape.csv",
-  );
-  toast("サイズ統計CSVをブラウザーからローカル保存しました。");
+  dom.saveSizeDistributionCsvButton.disabled = true;
+  try {
+    await saveBlobToLocalDirectory(
+      new Blob([state.sizeDistributionPayload.csv], { type: "text/csv;charset=utf-8" }),
+      "shape_statistics_by_shape.csv",
+    );
+    toast("サイズ統計CSVを読み込んだローカルフォルダへ保存しました。");
+  } catch (error) {
+    toast(`CSVを保存できません：${error.message}`, true);
+  } finally {
+    dom.saveSizeDistributionCsvButton.disabled = false;
+  }
 }
 
 async function loadTiffInventory(refresh) {
@@ -2230,8 +2381,11 @@ function groupTiffImagesByDirectory(images) {
   }
   return Array.from(groups, ([directory, groupedImages]) => ({
     directory,
-    images: groupedImages,
-  }));
+    images: [...groupedImages].sort((left, right) => compareNaturalPaths(
+      left?.relative_path || left?.image_id || left?.name,
+      right?.relative_path || right?.image_id || right?.name,
+    )),
+  })).sort((left, right) => compareNaturalPaths(left.directory, right.directory));
 }
 
 function renderTiffImageRow(item) {
