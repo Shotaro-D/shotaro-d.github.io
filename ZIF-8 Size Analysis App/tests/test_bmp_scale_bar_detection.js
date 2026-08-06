@@ -16,7 +16,7 @@ const sandbox = {
 };
 vm.createContext(sandbox);
 vm.runInContext(
-  `${manualSource}\nglobalThis.__scaleBarDetection = { detectLocalFooter, detectLocalScaleMarker };`,
+  `${manualSource}\nglobalThis.__manualFunctions = { detectLocalFooter, detectLocalScaleMarker, localAnalysisRun, isExcludedLocalPath };`,
   sandbox,
   { filename: "manual.js" },
 );
@@ -47,10 +47,22 @@ fillRect(0, width, footerStart, 548, 0);
 fillRect(barStart, barEnd, footerStart + 2, footerStart + 16, 255);
 
 const image = { naturalWidth: width, naturalHeight: height, tiffPixels: rgba };
-const footer = sandbox.__scaleBarDetection.detectLocalFooter(image);
-const detection = sandbox.__scaleBarDetection.detectLocalScaleMarker(image, null, null);
+const footer = sandbox.__manualFunctions.detectLocalFooter(image);
+const detection = sandbox.__manualFunctions.detectLocalScaleMarker(image, null, null);
 
 assert.equal(footer.y_start, footerStart);
 assert.equal(detection.marker.marker_kind, "horizontal_bar");
 assert.equal(detection.marker.detected_length_px, barEnd - barStart);
 assert.ok(detection.marker.confidence >= 0.65);
+
+assert.equal(
+  sandbox.__manualFunctions.localAnalysisRun({
+    name: "MLZIF99_image.bmp",
+    webkitRelativePath: "experiment/SEM_25k/MLZIF99_image.bmp",
+  }),
+  "experiment/SEM_25k",
+);
+assert.equal(sandbox.__manualFunctions.isExcludedLocalPath("experiment/Archive/image.bmp"), true);
+assert.equal(sandbox.__manualFunctions.isExcludedLocalPath("experiment/gomi/image.bmp"), true);
+assert.equal(sandbox.__manualFunctions.isExcludedLocalPath("experiment/trash/image.bmp"), true);
+assert.equal(sandbox.__manualFunctions.isExcludedLocalPath("experiment/SEM_25k/image.bmp"), false);

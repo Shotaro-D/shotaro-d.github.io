@@ -366,7 +366,9 @@ function fileDirectory(file) {
 }
 
 function isExcludedLocalPath(path) {
-  return String(path).split("/").some((part) => ["archive", "archive code", ".git", "__pycache__"].includes(part.toLowerCase()));
+  return String(path).split("/").some((part) => (
+    ["archive", "archive code", "gomi", "trash", ".git", "__pycache__"].includes(part.toLowerCase())
+  ));
 }
 
 function localFileByPath(path) {
@@ -571,12 +573,11 @@ function localImageStem(file) {
 }
 
 function localAnalysisRun(file) {
-  const pathParts = normalisedFilePath(file).split("/").filter(Boolean);
-  pathParts.pop();
-  const folder = [...pathParts].reverse().find((part) => /^mlzif/i.test(part));
-  if (folder) return folder;
-  const stemMatch = localImageStem(file).match(/^(MLZIF[^_]+)/i);
-  return stemMatch ? stemMatch[1] : null;
+  // Size distributions are defined by the directory that directly contains
+  // the SEM image, not by an MLZIF token in a parent path or file name.
+  // Keep the complete relative directory to avoid merging equal leaf names
+  // that occur under different experimental branches.
+  return fileDirectory(file) || "(選択フォルダ直下)";
 }
 
 function localImageFormat(file) {
@@ -1707,7 +1708,7 @@ function csvNumber(value) {
 }
 
 function createLocalSizeDistributionCsv(runRows, shapeKeys) {
-  const columns = ["Analysis run"];
+  const columns = ["SEM subfolder"];
   for (const shape of shapeKeys) {
     const label = SHAPE_LABELS[shape] || shape;
     columns.push(
@@ -2386,7 +2387,7 @@ async function refreshSizeDistribution() {
   dom.sizeDistributionButton.disabled = true;
   dom.refreshSizeDistributionButton.disabled = true;
   dom.saveSizeDistributionCsvButton.disabled = true;
-  dom.sizeDistributionDialogStatus.textContent = "ローカルJSONをMLZIFフォルダ単位で集計し，PNGを生成しています。";
+  dom.sizeDistributionDialogStatus.textContent = "ローカルJSONをSEM画像のサブフォルダ単位で集計し，PNGを生成しています。";
   dom.sizeDistributionList.setAttribute("aria-busy", "true");
   try {
     const result = await apiJson(
@@ -2398,7 +2399,7 @@ async function refreshSizeDistribution() {
     const runCount = (result.runs || []).length;
     const skippedCount = (result.skipped || []).length;
     const skippedLabel = skippedCount
-      ? ` ${skippedCount} runは統計対象粒子がないためスキップしました。`
+      ? ` ${skippedCount} SEMフォルダは統計対象粒子がないためスキップしました。`
       : "";
     let outputLabel;
     try {
@@ -2409,7 +2410,7 @@ async function refreshSizeDistribution() {
       outputLabel = `Particle sizeフォルダへ自動保存できませんでした：${error.message}`;
       toast(outputLabel, true);
     }
-    dom.sizeDistributionDialogStatus.textContent = `${runCount} runのPNGを表示しています。${outputLabel}${skippedLabel}`;
+    dom.sizeDistributionDialogStatus.textContent = `${runCount} SEMフォルダのPNGを表示しています。${outputLabel}${skippedLabel}`;
     dom.saveSizeDistributionCsvButton.disabled = !result.csv;
   } catch (error) {
     dom.sizeDistributionDialogStatus.textContent = `サイズ分布を更新できません：${error.message}`;

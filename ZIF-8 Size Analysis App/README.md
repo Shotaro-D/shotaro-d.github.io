@@ -25,10 +25,10 @@
 4. `Add`または更新を押すと，ブラウザー内で投影面積と等価円直径を再計算する。
 5. 必要に応じてJSON，TXT，PNG，JPEGをダウンロードする。
 
-画面上部の「サイズ分布」から，選択したローカルフォルダ内の解析JSONをMLZIFフォルダ（Analysis run）単位で集約できる。
+画面上部の「サイズ分布」から，選択したローカルフォルダ内の解析JSONを，SEM画像が直接入っているサブフォルダ単位で集約できる。異なる親ディレクトリに同名のサブフォルダがある場合も混同しないよう，相対パス全体を集計名として用いる。`Archive`，`gomi`，`trash` 配下の画像は一覧・集計の対象外とする。
 「サイズ分布」または「↻ 再集計」で最新のローカルJSONを読み直し，次をブラウザー内で生成して，選択したローカルフォルダ内の`Particle size`フォルダ（存在しない場合は作成）へ自動保存する。
 
-- `shape_statistics_by_shape.csv`：1行をMLZIFフォルダとし，形状ごとにAverage，standard deviation，CV，Countsの列を作成する。
+- `shape_statistics_by_shape.csv`：1行をSEM画像のサブフォルダとし，形状ごとにAverage，standard deviation，CV，Countsの列を作成する。
 - サイズ分布PNG：個数基準ヒストグラム，正規分布フィット線，Average，1σ，CV，D50を表示する。
 
 粒径は各画像のJSONに保存された`equivalent_diameter_nm`を使用する。TIFFではTIFFタグ／Hitachi TXT／画像内スケールバーの既存校正を使用する。BMPでは画像メタデータを使用せず，隣接TXT，確認済みJSON，または使用者が入力したバー表示値を用いる。後者では，画像右下のスケールバー長を自動検出して`nm/px`を算出する。この集計でも，画像，TXT，JSON，粒径データをサーバーへ送信しない。
