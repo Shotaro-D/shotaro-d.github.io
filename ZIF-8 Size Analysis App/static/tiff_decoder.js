@@ -89,6 +89,11 @@
       return values && values.length ? values[0] : fallback;
     }
 
+    function bytesFor(tag) {
+      const values = tags.get(tag);
+      return values && values.length ? Uint8Array.from(values) : null;
+    }
+
     function required(tag, label) {
       const value = first(tag);
       if (value === null) fail(`${label} tag（${tag}）がありません。`);
@@ -187,6 +192,11 @@
         samplesPerPixel,
         photometric,
         resampled: false,
+        // Hitachi stores PixelSize and MicronMarker in this UTF-16LE
+        // XPComment (TIFF tag 40092).  Keep the raw bytes local so the
+        // browser-side calibration code can parse them without uploading the
+        // original TIFF.
+        hitachiXpCommentBytes: bytesFor(40092),
       },
     };
   }
