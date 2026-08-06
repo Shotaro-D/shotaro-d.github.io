@@ -401,7 +401,9 @@ function findLocalFileBySuffix(suffix) {
 
 function parseSidecar(text) {
   const values = {};
-  for (const line of String(text || "").split(/\r?\n/)) {
+  for (const line of String(text || "").replaceAll("\u0000", "").split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || (trimmed.startsWith("[") && trimmed.endsWith("]"))) continue;
     const separator = line.indexOf("=");
     if (separator <= 0) continue;
     const key = line.slice(0, separator).trim();
@@ -409,6 +411,306 @@ function parseSidecar(text) {
     if (key) values[key] = value;
   }
   return values;
+}
+
+async function decodeLocalTextFile(file) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  for (const encoding of ["utf-8", "shift_jis"]) {
+    try {
+      return new TextDecoder(encoding, { fatal: true }).decode(bytes);
+    } catch (_) {
+      // Try the next encoding.  Hitachi sidecars are commonly UTF-8 or CP932.
+    }
+  }
+  return new TextDecoder("iso-8859-1").decode(bytes);
+}
+
+function decodeHitachiXpComment(bytes) {
+  if (!bytes?.length) return "";
+  let raw = bytes instanceof Uint8Array ? bytes : Uint8Array.from(bytes);
+  if (raw.length % 2) raw = raw.slice(0, -1);
+  try {
+    return new TextDecoder("utf-16le").decode(raw).replace(/^\uFEFF/, "");
+  } catch (_) {
+    return "";
+  }
+}
+
+function parseTiffMetadata(tiffMetadata) {
+  return parseSidecar(decodeHitachiXpComment(tiffMetadata?.hitachiXpCommentBytes));
+}
+
+function positiveMetadataFloat(metadata, key) {
+  const match = String(metadata?.[key] ?? "").match(
+    /^[\s]*([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)/,
+  );
+  if (!match) return null;
+  const value = Number(match[1]);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function localPixelLuminance(pixels, width, x, y) {
+  const offset = (y * width + x) * 4;
+  return (0.2126 * pixels[offset] + 0.7152 * pixels[offset + 1] + 0.0722 * pixels[offset + 2]) / 255;
+}
+
+function trueRunsAbove(values, threshold) {
+  const runs = [];
+  let start = null;
+  for (let index = 0; index <= values.length; index += 1) {
+    const qualifies = index < values.length && values[index] >= threshold;
+    if (qualifies && start === null) start = index;
+    if (!qualifies && start !== null) {
+      runs.push([start, index]);
+      start = null;
+    }
+  }
+  return runs;
+}
+
+function detectLocalFooter(image) {
+  const pixels = image?.tiffPixels;
+  const width = Number(image?.naturalWidth || 0);
+  const height = Number(image?.naturalHeight || 0);
+  if (!pixels || width <= 0 || height <= 0) return null;
+  const rowDarkFraction = new Float32Array(height);
+  for (let y = 0; y < height; y += 1) {
+    let dark = 0;
+    for (let x = 0; x < width; x += 1) {
+      if (localPixelLuminance(pixels, width, x, y) <= 0.06) dark += 1;
+    }
+    rowDarkFraction[y] = dark / width;
+  }
+  const start = Math.max(0, Math.round(height * 0.55));
+  let yStart = null;
+  for (let y = start; y <= height - 6; y += 1) {
+    let qualifies = true;
+    for (let row = y; row < y + 6; row += 1) {
+      if (rowDarkFraction[row] < 0.8) {
+        qualifies = false;
+        break;
+      }
+    }
+    if (qualifies) {
+      yStart = y;
+      break;
+    }
+  }
+  if (yStart === null) return null;
+  const beforeStart = Math.max(0, yStart - 3);
+  const beforeRows = Math.max(1, yStart - beforeStart);
+  let before = 0;
+  for (let y = beforeStart; y < yStart; y += 1) before += rowDarkFraction[y];
+  let after = 0;
+  for (let y = yStart; y < Math.min(height, yStart + 6); y += 1) after += rowDarkFraction[y];
+  const transitionContrast = Math.min(1, Math.max(0, ((1 - before / beforeRows) - (1 - after / 6)) / 0.35));
+  let darkMean = 0;
+  for (let y = yStart; y < Math.min(height, yStart + 6); y += 1) darkMean += rowDarkFraction[y];
+  const darknessScore = Math.min(1, Math.max(0, ((darkMean / 6) - 0.8) / 0.2));
+  const locationScore = Math.min(1, Math.max(0, (yStart / height - 0.55) / 0.35));
+  return {
+    x_start: 0,
+    y_start: yStart,
+    x_end: width,
+    y_end: height,
+    confidence: Math.min(1, Math.max(0, 0.45 * darknessScore + 0.35 * transitionContrast + 0.20 * locationScore)),
+    method: "dark_row_transition",
+  };
+}
+
+function selectLocalTickSpan(centers, expectedLength) {
+  if (centers.length < 2) return [0, Math.max(0, centers.length - 1)];
+  if (expectedLength > 0) {
+    let best = null;
+    for (let first = 0; first < centers.length - 2; first += 1) {
+      for (let last = first + 2; last < centers.length; last += 1) {
+        const span = centers[last] - centers[first];
+        const relativeError = Math.abs(span - expectedLength) / expectedLength;
+        const candidate = [relativeError, first, last];
+        if (!best || candidate[0] < best[0]) best = candidate;
+      }
+    }
+    if (best) return [best[1], best[2]];
+  }
+  return [0, centers.length - 1];
+}
+
+function detectLocalScaleMarker(image, micronMarkerNm, pixelSizeNmPerPx) {
+  const pixels = image?.tiffPixels;
+  const width = Number(image?.naturalWidth || 0);
+  const height = Number(image?.naturalHeight || 0);
+  const footer = detectLocalFooter(image);
+  if (!pixels || width <= 0 || height <= 0 || !footer || footer.y_end - footer.y_start < 4) {
+    return { footer, marker: null };
+  }
+  const expectedLength = micronMarkerNm > 0 && pixelSizeNmPerPx > 0
+    ? micronMarkerNm / pixelSizeNmPerPx
+    : null;
+  const bandHeight = Math.max(4, Math.min(40, Math.floor((footer.y_end - footer.y_start) / 3)));
+  const bandYEnd = Math.min(height, footer.y_start + bandHeight);
+  const columnCoverage = new Float32Array(width);
+  for (let y = footer.y_start; y < bandYEnd; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (localPixelLuminance(pixels, width, x, y) >= 0.88) columnCoverage[x] += 1;
+    }
+  }
+  for (let x = 0; x < width; x += 1) columnCoverage[x] /= bandHeight;
+  const rightStart = Math.max(footer.x_start, Math.round(width * 0.50));
+  const maxTickWidth = Math.max(12, Math.round(width * 0.012));
+  const tickRuns = trueRunsAbove(columnCoverage, 0.35).filter(([start, end]) => (
+    start >= rightStart && end - start >= 2 && end - start <= maxTickWidth
+  ));
+
+  if (tickRuns.length >= 3) {
+    const centers = tickRuns.map(([start, end]) => (start + end - 1) / 2);
+    const [first, last] = selectLocalTickSpan(centers, expectedLength);
+    const selectedRuns = tickRuns.slice(first, last + 1);
+    const selectedCenters = centers.slice(first, last + 1);
+    const xStart = selectedRuns[0][0];
+    const xEnd = selectedRuns[selectedRuns.length - 1][1];
+    let occupiedStart = null;
+    let occupiedEnd = null;
+    for (let y = footer.y_start; y < bandYEnd; y += 1) {
+      for (const [start, end] of selectedRuns) {
+        let occupied = false;
+        for (let x = start; x < end; x += 1) {
+          if (localPixelLuminance(pixels, width, x, y) >= 0.88) {
+            occupied = true;
+            break;
+          }
+        }
+        if (occupied) {
+          occupiedStart = occupiedStart === null ? y : Math.min(occupiedStart, y);
+          occupiedEnd = Math.max(occupiedEnd ?? y, y + 1);
+          break;
+        }
+      }
+    }
+    const spacings = selectedCenters.slice(1).map((center, index) => center - selectedCenters[index]);
+    const meanSpacing = spacings.length ? spacings.reduce((sum, value) => sum + value, 0) / spacings.length : 0;
+    const spacingCv = meanSpacing > 0
+      ? Math.sqrt(spacings.reduce((sum, value) => sum + (value - meanSpacing) ** 2, 0) / spacings.length) / meanSpacing
+      : 1;
+    const uniformity = Math.min(1, Math.max(0, 1 - spacingCv / 0.20));
+    const coverage = selectedRuns.reduce((sum, [start, end]) => sum + columnCoverage.slice(start, end).reduce((inner, value) => inner + value, 0) / Math.max(1, end - start), 0) / selectedRuns.length;
+    const detectedLength = xEnd - xStart;
+    const relativeError = expectedLength ? Math.abs(detectedLength - expectedLength) / expectedLength : null;
+    const agreement = relativeError === null ? 0.55 : Math.exp(-relativeError / 0.08);
+    const countScore = Math.min(1, Math.max(0, (selectedRuns.length - 2) / 6));
+    return {
+      footer,
+      marker: {
+        marker_kind: "tick_ruler",
+        x_start: xStart,
+        x_end: xEnd,
+        y_start: occupiedStart ?? footer.y_start,
+        y_end: occupiedEnd ?? bandYEnd,
+        detected_length_px: detectedLength,
+        expected_length_px: expectedLength,
+        relative_error: relativeError,
+        tick_count: selectedRuns.length,
+        confidence: Math.min(1, Math.max(0, 0.30 * uniformity + 0.30 * agreement + 0.25 * coverage + 0.15 * countScore)),
+      },
+    };
+  }
+
+  let best = null;
+  for (let row = 0; row < bandHeight; row += 1) {
+    const values = new Uint8Array(width);
+    const y = footer.y_start + row;
+    for (let x = 0; x < width; x += 1) values[x] = localPixelLuminance(pixels, width, x, y) >= 0.88 ? 1 : 0;
+    for (const [start, end] of trueRunsAbove(values, 1)) {
+      const length = end - start;
+      if (start < rightStart || length < Math.max(8, Math.round(width * 0.02))) continue;
+      const score = expectedLength ? Math.abs(length - expectedLength) / expectedLength : -length;
+      if (!best || score < best.score) best = {score, row, start, end};
+    }
+  }
+  if (!best) return { footer, marker: null };
+  const detectedLength = best.end - best.start;
+  const relativeError = expectedLength ? Math.abs(detectedLength - expectedLength) / expectedLength : null;
+  const agreement = relativeError === null ? 0.55 : Math.exp(-relativeError / 0.08);
+  return {
+    footer,
+    marker: {
+      marker_kind: "horizontal_bar",
+      x_start: best.start,
+      x_end: best.end,
+      y_start: footer.y_start + best.row,
+      y_end: footer.y_start + best.row + 1,
+      detected_length_px: detectedLength,
+      expected_length_px: expectedLength,
+      relative_error: relativeError,
+      tick_count: 0,
+      confidence: Math.min(1, Math.max(0, 0.55 + 0.45 * agreement)),
+    },
+  };
+}
+
+function buildLocalCalibration(image, sidecar, tiffMetadata) {
+  const tiffPixelSize = positiveMetadataFloat(tiffMetadata, "PixelSize");
+  const sidecarPixelSize = positiveMetadataFloat(sidecar, "PixelSize");
+  const metadataPixelSize = tiffPixelSize ?? sidecarPixelSize;
+  const markerLength = positiveMetadataFloat(tiffMetadata, "MicronMarker")
+    ?? positiveMetadataFloat(sidecar, "MicronMarker");
+  const detected = detectLocalScaleMarker(image, markerLength, metadataPixelSize);
+  const marker = detected.marker;
+  const detectedLength = marker?.detected_length_px ?? null;
+  const relativeError = marker?.relative_error ?? null;
+  const automaticPixelSize = marker && markerLength > 0 && detectedLength > 0
+    ? markerLength / detectedLength
+    : null;
+  const passesQualityGate = Boolean(
+    automaticPixelSize
+      && marker.confidence >= 0.65
+      && (relativeError === null || relativeError <= 0.10),
+  );
+  const metadataSource = tiffPixelSize !== null
+    ? "TIFF tag 40092"
+    : sidecarPixelSize !== null
+      ? "Hitachi sidecar TXT"
+      : null;
+  const metadataMethod = tiffPixelSize !== null
+    ? "tiff_tag_40092"
+    : sidecarPixelSize !== null
+      ? "sidecar"
+      : "manual_scale_required";
+  const pixelSize = passesQualityGate ? automaticPixelSize : (metadataPixelSize || 1);
+  return {
+    footer: detected.footer,
+    calibration: {
+      source: passesQualityGate ? "scale_bar" : (metadataPixelSize ? "metadata_fallback" : "manual_required"),
+      method: passesQualityGate ? "detected_scale_bar_span_with_hitachi_marker_metadata" : (metadataPixelSize ? "hitachi_pixel_size_metadata_fallback" : metadataMethod),
+      pixel_size_nm_per_px: pixelSize,
+      marker_length_nm: markerLength,
+      detected_length_px: detectedLength,
+      marker_kind: marker?.marker_kind || null,
+      confidence: marker?.confidence ?? null,
+      relative_error_vs_metadata: relativeError,
+      automatic_scale_bar_pixel_size_nm_per_px: automaticPixelSize,
+      automatic_scale_bar_passes_quality_gate: passesQualityGate,
+      quality_gate: {
+        confidence_min: 0.65,
+        metadata_relative_error_max: 0.10,
+        passed: passesQualityGate,
+      },
+      revision: 1,
+      verified_by_user: false,
+      verified_at: null,
+      verification_note: "",
+      metadata_pixel_size_nm_per_px: metadataPixelSize,
+      metadata_source: metadataSource,
+      tiff_pixel_size_nm_per_px: tiffPixelSize,
+      sidecar_pixel_size_nm_per_px: sidecarPixelSize,
+      scale_bar_bounds_px: marker ? {
+        x_start: marker.x_start,
+        x_end: marker.x_end,
+        y_start: marker.y_start,
+        y_end: marker.y_end,
+      } : null,
+      scale_bar_bounds_definition: "outer_edges_and_occupied_tick_rows",
+    },
+  };
 }
 
 function localSessionCandidates(imageFile) {
@@ -557,7 +859,9 @@ function refreshLocalSessionMeasurements() {
 
 async function createLocalSession(imageFile, image, imageHash, arrayBuffer) {
   const sidecarFile = findLocalSidecar(imageFile);
-  const sidecar = sidecarFile ? parseSidecar(await sidecarFile.text()) : {};
+  const sidecar = sidecarFile ? parseSidecar(await decodeLocalTextFile(sidecarFile)) : {};
+  const tiffMetadata = parseTiffMetadata(image.tiffMetadata);
+  const localCalibration = buildLocalCalibration(image, sidecar, tiffMetadata);
   const stored = readLocalStoredSession(imageHash);
   let imported = stored;
   if (!imported) {
@@ -572,24 +876,17 @@ async function createLocalSession(imageFile, image, imageHash, arrayBuffer) {
       }
     }
   }
-  const pixelSize = Number(sidecar.PixelSize || 1);
-  const markerLength = Number(sidecar.MicronMarker);
-  const calibration = imported?.calibration || {
-    source: "metadata_fallback",
-    method: sidecar.PixelSize ? "hitachi_pixel_size_metadata_fallback" : "manual_scale_required",
-    pixel_size_nm_per_px: Number.isFinite(pixelSize) && pixelSize > 0 ? pixelSize : 1,
-    marker_length_nm: Number.isFinite(markerLength) && markerLength > 0 ? markerLength : null,
-    detected_length_px: null,
-    confidence: null,
-    relative_error_vs_metadata: null,
-    revision: 1,
-    verified_by_user: false,
-    verified_at: null,
-    verification_note: "",
-    metadata_pixel_size_nm_per_px: Number.isFinite(pixelSize) && pixelSize > 0 ? pixelSize : null,
-    metadata_source: sidecar.PixelSize ? "Hitachi sidecar TXT" : null,
-    scale_bar_bounds_px: null,
-  };
+  const importedCalibration = imported?.calibration;
+  const importedIsAuthoritative = Boolean(
+    importedCalibration
+      && (importedCalibration.verified_by_user || importedCalibration.source === "manual_override"),
+  );
+  const calibration = importedIsAuthoritative
+    ? importedCalibration
+    : {
+      ...localCalibration.calibration,
+      revision: Math.max(1, Number(importedCalibration?.revision || 1)),
+    };
   const session = imported || {
     schema_version: "1.1",
     analysis_version: "1.2.0-browser-local",
@@ -612,7 +909,7 @@ async function createLocalSession(imageFile, image, imageHash, arrayBuffer) {
     delivery: "original_tiff_bytes",
     browser_decode: "lossless_full_resolution",
     resampled: false,
-    footer: session.image?.footer || { y_start: image.naturalHeight },
+    footer: localCalibration.footer || session.image?.footer || { y_start: image.naturalHeight },
   };
   session.dataset = {
     ...(session.dataset || {}),
@@ -770,6 +1067,7 @@ async function loadTiff(fileOrUrl) {
   canvas.naturalWidth = decoded.width;
   canvas.naturalHeight = decoded.height;
   canvas.tiffMetadata = decoded.metadata;
+  canvas.tiffPixels = decoded.rgba;
   return canvas;
 }
 
@@ -1283,7 +1581,9 @@ function renderScale() {
     ? "研究者が確認・修正したスケールバー値を使用しています。変更履歴はJSONに保存されます。"
     : (isBar
       ? "右下のバー長を画像から検出し，Hitachi画像内のMicronMarker値を対応付けました。"
-      : "自動検出が品質基準を満たさないため，画像メタデータのPixelSizeを暫定使用しています。校正値を確認してください。");
+      : (calibration.source === "manual_required"
+        ? "TIFF／TXTから有効な校正値を取得できませんでした。バー表示値とpx長を入力して校正してください。"
+        : "自動検出が品質基準を満たさないため，画像メタデータのPixelSizeを暫定使用しています。校正値を確認してください。"));
   if (document.activeElement !== dom.scaleMarkerInput) {
     dom.scaleMarkerInput.value = calibration.marker_length_nm ?? "";
   }
