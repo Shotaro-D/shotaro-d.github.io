@@ -127,17 +127,17 @@
     if (!Number.isFinite(x) || !Number.isFinite(y)) {
       throw new TypeError("wheel interaction requires finite deltas");
     }
-    // Some mouse drivers mix a vertical component into the thumb wheel.  A
-    // meaningful horizontal component is therefore a stronger identifier than
-    // requiring horizontal motion to dominate the event.
-    const thumbWheel = Math.abs(x) >= 0.5;
-    const thumbDelta = Math.sign(x) * Math.max(Math.abs(x), Math.abs(y));
+    // Browsers do not expose a reliable distinction between a mouse thumb
+    // wheel and a trackpad's diagonal scroll.  Do not infer image zoom from
+    // deltaX: it would make trackpad use silently alter the image instead of
+    // the working particle.  Image zoom is always an explicit modifier.
+    const imageZoom = Boolean(imageZoomModifier);
     return Object.freeze({
-      source: thumbWheel ? "thumb" : "index",
-      target: thumbWheel || Boolean(imageZoomModifier) || !Boolean(hasWorkingParticle)
+      source: imageZoom ? "modified-index" : "index",
+      target: imageZoom || !Boolean(hasWorkingParticle)
         ? "image"
         : "model",
-      delta: thumbWheel ? thumbDelta : y,
+      delta: y,
     });
   }
 
