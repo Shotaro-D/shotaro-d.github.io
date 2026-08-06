@@ -201,7 +201,7 @@ function cacheDom() {
     "metricDiameter", "metricScale", "resetOrientationButton", "centerParticleButton",
     "qualityWarning", "includeStatisticsInput", "exclusionReasonField", "exclusionReasonInput",
     "particleNotes", "commitParticleButton", "commitParticleButtonLabel", "cancelEditButton", "deleteParticleButton",
-    "folderInput", "tiffDialog", "closeTiffDialogButton", "refreshTiffIndexButton", "cancelTiffButton", "confirmTiffButton",
+    "folderInput", "tiffDialog", "closeTiffDialogButton", "changeProjectButton", "refreshTiffIndexButton", "cancelTiffButton", "confirmTiffButton",
     "tiffImageList", "tiffDialogStatus", "sizeDistributionDialog", "refreshSizeDistributionButton", "closeSizeDistributionDialogButton", "cancelSizeDistributionButton", "saveSizeDistributionCsvButton", "sizeDistributionDialogStatus", "sizeDistributionList", "toastRegion", "shortcutPanel", "shortcutToggleButton",
     "shortcutList", "shortcutCloseButton",
   ];
@@ -306,6 +306,7 @@ function bindEvents() {
     }
   });
   dom.closeTiffDialogButton.addEventListener("click", closeTiffDialog);
+  dom.changeProjectButton.addEventListener("click", selectAnotherProject);
   dom.refreshTiffIndexButton.addEventListener("click", refreshTiffIndex);
   dom.cancelTiffButton.addEventListener("click", closeTiffDialog);
   dom.confirmTiffButton.addEventListener("click", openSelectedTiff);
@@ -561,6 +562,19 @@ async function selectLocalFolder() {
     }
   } finally {
     dom.openTiffButton.disabled = false;
+  }
+}
+
+async function selectAnotherProject() {
+  if ((state.working && state.dirty) || state.isPlacing || state.saving) {
+    toast("未保存の粒子編集を保存またはキャンセルしてから別のプロジェクトを開いてください。", true);
+    return;
+  }
+  dom.changeProjectButton.disabled = true;
+  try {
+    await selectLocalFolder();
+  } finally {
+    dom.changeProjectButton.disabled = false;
   }
 }
 
