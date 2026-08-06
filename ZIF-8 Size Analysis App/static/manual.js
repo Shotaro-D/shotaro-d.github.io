@@ -93,6 +93,7 @@ const SHAPE_COLORS = {
 const ROTATION_RADIANS_PER_PIXEL = 0.0105;
 const INTERACTION_HELP_TEXT = "通常ドラッグ＝3D回転，X／Y／Z＋ドラッグ＝各モデル軸回転，Shift＋ドラッグ＝移動，Option＋ドラッグ＝2D回転です。人差し指ホイール＝図形サイズ（Shiftで画像ズーム），親指ホイール＝画像ズームです。";
 const PARTICLE_NUMBER_PREFERENCE_KEY = "manual-sem-show-particle-numbers";
+const SCALE_BAR_AUTO_DETECTION_MIN_CONFIDENCE = 0.65;
 
 const state = {
   session: null,
@@ -784,7 +785,7 @@ function buildLocalCalibration(image, sidecar, tiffMetadata) {
     : null;
   const passesQualityGate = Boolean(
     automaticPixelSize
-      && marker.confidence >= 0.65
+      && marker.confidence >= SCALE_BAR_AUTO_DETECTION_MIN_CONFIDENCE
       && (relativeError === null || relativeError <= 0.10),
   );
   const metadataSource = tiffPixelSize !== null
@@ -919,6 +920,20 @@ function calibrationForLocalSession(session, automaticCalibration) {
       ...automaticCalibration,
       revision: Math.max(1, Number(imported?.revision || 1)),
     };
+}
+
+function isCurrentImageBmp() {
+  return Boolean(state.currentImageFile && localImageFormat(state.currentImageFile) === "BMP");
+}
+
+function automaticallyDetectBmpScaleBar() {
+  const marker = detectLocalScaleMarker(state.image, null, null).marker;
+  const pixelLength = Number(marker?.detected_length_px);
+  const confidence = Number(marker?.confidence);
+  if (!(pixelLength > 0) || !Number.isFinite(confidence) || confidence < SCALE_BAR_AUTO_DETECTION_MIN_CONFIDENCE) {
+    throw new Error("BMPのスケールバー長を十分な信頼度で自動検出できませんでした。画像右下のバーが明瞭な画像を使用してください。");
+  }
+  return marker;
 }
 
 function refreshIndexedSessionSummary(session, calibration) {
@@ -1658,15 +1673,28 @@ async function localManualApi(url, options = {}) {
   if (url === "/api/manual/calibration") {
     const payload = JSON.parse(options.body || "{}");
     const marker = Number(payload.marker_length_nm);
-    const pixels = Number(payload.detected_length_px);
-    if (!(marker > 0 && pixels > 0)) throw new Error("バー表示値と検出長には正の数値を入力してください。");
+    const automaticBmpMarker = isCurrentImageBmp() ? automaticallyDetectBmpScaleBar() : null;
+    const pixels = automaticBmpMarker
+      ? Number(automaticBmpMarker.detected_length_px)
+      : Number(payload.detected_length_px);
+    if (!(marker > 0) || !(pixels > 0)) {
+      throw new Error("バー表示値と検出長には正の数値を入力してください。");
+    }
     state.session.calibration = {
       ...state.session.calibration,
       source: "manual_override",
-      method: "manual_scale_bar_override",
+      method: automaticBmpMarker ? "manual_marker_with_auto_detected_scale_bar" : "manual_scale_bar_override",
       pixel_size_nm_per_px: marker / pixels,
       marker_length_nm: marker,
       detected_length_px: pixels,
+      marker_kind: automaticBmpMarker?.marker_kind || state.session.calibration.marker_kind || null,
+      confidence: automaticBmpMarker?.confidence ?? state.session.calibration.confidence ?? null,
+      scale_bar_bounds_px: automaticBmpMarker ? {
+        x_start: automaticBmpMarker.x_start,
+        x_end: automaticBmpMarker.x_end,
+        y_start: automaticBmpMarker.y_start,
+        y_end: automaticBmpMarker.y_end,
+      } : state.session.calibration.scale_bar_bounds_px || null,
       revision: Number(state.session.calibration.revision || 1) + 1,
       verified_by_user: true,
       verified_at: new Date().toISOString(),
@@ -2564,6 +2592,7 @@ function renderScale() {
   const calibration = state.session?.calibration || {};
   const isBar = calibration.source === "scale_bar";
   const isManual = calibration.source === "manual_override";
+  const isBmp = isCurrentImageBmp();
   const verified = Boolean(calibration.verified_by_user);
   dom.scaleBadge.textContent = verified
     ? (isManual ? "手動校正・確認済み" : "自動校正・確認済み")
@@ -2584,7 +2613,9 @@ function renderScale() {
     : (isBar
       ? "右下のバー長を画像から検出し，Hitachi画像内のMicronMarker値を対応付けました。"
       : (calibration.source === "manual_required"
-        ? "TIFF／TXTから有効な校正値を取得できませんでした。バー表示値とpx長を入力して校正してください。"
+        ? (isBmp
+          ? "BMPではバー表示値（nm）のみを入力してください。px長は画像から自動検出します。"
+          : "TIFF／TXTから有効な校正値を取得できませんでした。バー表示値とpx長を入力して校正してください。")
         : "自動検出が品質基準を満たさないため，画像メタデータのPixelSizeを暫定使用しています。校正値を確認してください。"));
   if (document.activeElement !== dom.scaleMarkerInput) {
     dom.scaleMarkerInput.value = calibration.marker_length_nm ?? "";
@@ -2592,6 +2623,11 @@ function renderScale() {
   if (document.activeElement !== dom.scalePixelsInput) {
     dom.scalePixelsInput.value = calibration.detected_length_px ?? "";
   }
+  dom.scalePixelsInput.readOnly = isBmp;
+  dom.scalePixelsInput.setAttribute("aria-readonly", String(isBmp));
+  dom.scalePixelsInput.title = isBmp
+    ? "BMPではスケールバー長を画像から自動検出します。"
+    : "必要に応じて検出長を修正できます。";
   if (document.activeElement !== dom.scaleVerificationNote) {
     dom.scaleVerificationNote.value = calibration.verification_note || "";
   }
@@ -2603,9 +2639,10 @@ async function verifyOrUpdateScale() {
     return;
   }
   const marker = Number(dom.scaleMarkerInput.value);
-  const pixels = Number(dom.scalePixelsInput.value);
-  if (!Number.isFinite(marker) || marker <= 0 || !Number.isFinite(pixels) || pixels <= 0) {
-    toast("バー表示値と検出長には正の数値を入力してください。", true);
+  const isBmp = isCurrentImageBmp();
+  const pixels = isBmp ? null : Number(dom.scalePixelsInput.value);
+  if (!Number.isFinite(marker) || marker <= 0 || (!isBmp && (!Number.isFinite(pixels) || pixels <= 0))) {
+    toast(isBmp ? "BMPではバー表示値（nm）のみを入力してください。" : "バー表示値と検出長には正の数値を入力してください。", true);
     return;
   }
   dom.verifyScaleButton.disabled = true;
