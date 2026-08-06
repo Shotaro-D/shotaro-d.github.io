@@ -3,95 +3,321 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Authenticated ZIF-8 SEM particle-size analysis">
-  <title>ZIF-8 Size Analysis App</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <meta name="description" content="SEM画像上に3D形状を手動配置し，投影面積から粒子径を計測するローカルアプリ">
+  <title>Manual SEM Particle Count</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/manual.css">
 </head>
-<body>
-  <main class="shell">
-    <header class="hero">
-      <div>
-        <p class="eyebrow">ZIF-8 · SEM ANALYSIS</p>
-        <h1>Shape Statistics</h1>
-        <p class="lead">解析フォルダを選択し，保存済みのJSONセッションから形状別の粒径統計をブラウザー内で計算します。</p>
-      </div>
-      <div id="userArea" class="user-area" hidden>
-        <span id="userEmail"></span>
-        <button id="logoutButton" class="button button-quiet" type="button">ログアウト</button>
-      </div>
-    </header>
+<body class="manual-body" data-authenticated="{{ 'true' if authenticated else 'false' }}">
+  <a class="skip-link" href="#manualMain">メインコンテンツへ移動</a>
 
-    <section id="loginView" class="card auth-card" hidden>
+  <main id="loginView" class="auth-shell" hidden>
+    <section class="auth-card" aria-labelledby="loginHeading">
       <p class="eyebrow">AUTHENTICATED ACCESS</p>
-      <h2>ログイン</h2>
-      <p class="muted">発行されたメールアドレスとパスワードを入力してください。認証は日本時間の日付が変わるまで有効です。</p>
-      <form id="loginForm" class="stack-form">
-        <label>メールアドレス<input id="emailInput" name="email" type="email" autocomplete="username" required></label>
-        <label>パスワード<input id="passwordInput" name="password" type="password" autocomplete="current-password" required></label>
+      <h1 id="loginHeading">ZIF-8 SEM Manual Fitting</h1>
+      <p class="auth-lead">発行されたメールアドレスとパスワードでログインしてください。認証は日本時間の日付が変わるまで有効です。</p>
+      <form id="loginForm" class="auth-form">
+        <label for="emailInput">メールアドレス</label>
+        <input id="emailInput" name="email" type="email" autocomplete="username" required>
+        <label for="passwordInput">パスワード</label>
+        <input id="passwordInput" name="password" type="password" autocomplete="current-password" required>
         <button class="button button-primary" type="submit">認証して開始</button>
       </form>
-      <p id="loginStatus" class="status" role="status" aria-live="polite"></p>
+      <p id="loginStatus" class="auth-status" role="status" aria-live="polite"></p>
     </section>
-
-    <section id="appView" hidden>
-      <section class="card step-card">
-        <div class="step-number">01</div>
-        <div class="step-content">
-          <p class="eyebrow">INPUT FOLDER</p>
-          <h2>解析フォルダを選択</h2>
-          <p class="muted">TIFF，TXT，JPEG，JSONなどを含むフォルダを選択してください。選択したファイルは使用者のブラウザー内だけで読み込み，サーバーへは送信しません。</p>
-          <label class="folder-picker" for="folderInput">
-            <span class="folder-icon" aria-hidden="true">＋</span>
-            <span><strong>ローカルフォルダを選択</strong><small>ファイルはこのブラウザー内で処理されます</small></span>
-            <input id="folderInput" type="file" webkitdirectory directory multiple>
-          </label>
-          <p id="selectionStatus" class="status" role="status" aria-live="polite">フォルダが選択されていません。</p>
-        </div>
-      </section>
-
-      <section id="inventoryCard" class="card step-card" hidden>
-        <div class="step-number">02</div>
-        <div class="step-content">
-          <p class="eyebrow">FILE INVENTORY</p>
-          <h2>読み込み内容を確認</h2>
-          <div id="inventoryGrid" class="inventory-grid"></div>
-          <p id="inventoryStatus" class="status" role="status" aria-live="polite"></p>
-          <button id="analyseButton" class="button button-primary" type="button" disabled>解析開始</button>
-        </div>
-      </section>
-
-      <section id="resultCard" class="card step-card result-card" hidden>
-        <div class="step-number">03</div>
-        <div class="step-content">
-          <div class="result-heading">
-            <div>
-              <p class="eyebrow">RESULT</p>
-              <h2>形状別粒径統計</h2>
-            </div>
-            <a id="downloadButton" class="button button-secondary" href="#" hidden>CSVをダウンロード</a>
-          </div>
-          <p id="resultSummary" class="muted"></p>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Shape</th><th>Average diameter</th><th>standard deviation</th><th>CV</th><th>Counts</th></tr></thead>
-              <tbody id="resultTableBody"></tbody>
-            </table>
-          </div>
-          <details class="used-files">
-            <summary>使用したJSONファイル</summary>
-            <ul id="usedFiles"></ul>
-          </details>
-        </div>
-      </section>
-    </section>
-
-    <footer>
-      <span>Private analysis workspace</span>
-      <span>Session expires at the end of the day (JST)</span>
-    </footer>
   </main>
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="{{ url_for('static', filename='analysis.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+
+  <div id="appView" hidden>
+
+  <header class="app-header manual-header">
+    <div class="brand-block">
+      <div class="brand-mark" aria-hidden="true"><span class="brand-glyph">◇</span></div>
+      <div>
+        <p class="eyebrow">MANUAL SEM METROLOGY</p>
+        <h1>Particle Count</h1>
+        <p class="subtitle">3D形状の手動配置・投影面積による個数基準粒子径</p>
+      </div>
+    </div>
+    <div class="header-actions" aria-label="ファイル操作">
+      <span id="connectionStatus" class="connection-pill is-loading" role="status">
+        <span class="status-dot" aria-hidden="true"></span><span>認証待ち</span>
+      </span>
+      <button id="openTiffButton" class="button button-secondary" type="button">ローカルフォルダを選択</button>
+      <input id="folderInput" type="file" webkitdirectory directory multiple hidden>
+      <button id="reloadButton" class="button button-secondary" type="button">↻ 再読み込み</button>
+      <button id="importJsonButton" class="button button-secondary" type="button">JSON復元</button>
+      <input id="importJsonInput" type="file" accept="application/json,.json" hidden>
+      <button id="saveJsonButton" class="button button-secondary" type="button">JSON保存</button>
+      <button id="savePngButton" class="button button-secondary" type="button">PNG保存</button>
+      <button id="saveJpegButton" class="button button-secondary" type="button">JPEG保存</button>
+      <button id="saveTxtButton" class="button button-primary" type="button">TXT保存</button>
+      <span id="userEmail" class="manual-user-email" aria-label="ログイン中のユーザー"></span>
+      <button id="logoutButton" class="button button-quiet" type="button">ログアウト</button>
+    </div>
+  </header>
+
+  <main id="manualMain" class="manual-shell">
+    <section class="manual-summary" aria-label="個数基準集計">
+      <div class="manual-summary-item manual-summary-primary">
+        <span>Counts</span><strong id="summaryCount">0</strong><small id="summaryCountDetail">included</small>
+      </div>
+      <div class="manual-summary-item">
+        <span>Avg Dia. (SEM)</span><strong id="summaryMean">—</strong><small>nm</small>
+      </div>
+      <div class="manual-summary-item">
+        <span>Std. Dev.</span><strong id="summaryStd">—</strong><small>nm</small>
+      </div>
+      <div class="manual-summary-item">
+        <span>C.V.</span><strong id="summaryCv">—</strong><small>%</small>
+      </div>
+      <div class="manual-summary-item manual-scale-summary">
+        <span>使用スケール</span><strong id="summaryScale">—</strong><small>nm/px</small>
+      </div>
+    </section>
+
+    <div class="manual-workspace">
+      <aside class="panel manual-left-panel" aria-labelledby="shapeHeading">
+        <section class="manual-panel-section scale-section" aria-labelledby="scaleHeading">
+          <div class="manual-section-heading">
+            <h2 id="scaleHeading">① スケール</h2>
+            <span id="scaleBadge" class="manual-badge">検出中</span>
+          </div>
+          <dl class="manual-scale-details">
+            <div><dt>バー表示値</dt><dd id="scaleMarker">—</dd></div>
+            <div><dt>検出長</dt><dd id="scalePixels">—</dd></div>
+            <div><dt>信頼度</dt><dd id="scaleConfidence">—</dd></div>
+          </dl>
+          <p id="scaleMethod" class="manual-note">右下のスケールバーを確認しています。</p>
+          <details id="scaleAdjustment" class="scale-adjustment">
+            <summary>校正値を確認・修正</summary>
+            <div class="scale-adjustment-grid">
+              <label>
+                <span>バー表示値（nm）</span>
+                <input id="scaleMarkerInput" type="number" min="0.000001" step="any" inputmode="decimal">
+              </label>
+              <label>
+                <span>検出長（px）</span>
+                <input id="scalePixelsInput" type="number" min="0.000001" step="any" inputmode="decimal">
+              </label>
+            </div>
+            <label class="scale-note-label" for="scaleVerificationNote">確認メモ</label>
+            <input id="scaleVerificationNote" type="text" placeholder="例：画像右下の1000 nmバーを確認">
+            <button id="verifyScaleButton" class="button button-secondary" type="button">この校正を確認・保存</button>
+            <p class="manual-note">値を変更した場合はmanual overrideとして記録し，全粒子のnm値を再計算します。</p>
+          </details>
+        </section>
+
+        <section class="manual-panel-section" aria-labelledby="shapeHeading">
+          <div class="manual-section-heading">
+            <h2 id="shapeHeading">② 形状を選択</h2>
+          </div>
+          <div id="shapePalette" class="shape-palette" role="radiogroup" aria-label="粒子形状">
+            <button class="shape-choice is-selected" type="button" role="radio" aria-checked="true" data-shape="rhombic_dodecahedron">
+              <span class="shape-choice-icon shape-rd" aria-hidden="true">◇</span>
+              <span>Rhombic<br>dodecahedron</span>
+            </button>
+            <button class="shape-choice" type="button" role="radio" aria-checked="false" data-shape="chamfered_cube">
+              <span class="shape-choice-icon" aria-hidden="true">⬡</span>
+              <span>Chamfered<br>cube</span>
+            </button>
+            <button class="shape-choice" type="button" role="radio" aria-checked="false" data-shape="cube">
+              <span class="shape-choice-icon" aria-hidden="true">□</span>
+              <span>Cube</span>
+            </button>
+          </div>
+          <button id="newParticleButton" class="button button-primary manual-new-button" type="button"
+            aria-keyshortcuts="T" title="ショートカットT：新しい図形を配置">
+            <span id="newParticleButtonLabel">＋ 新しい図形を配置</span><kbd class="manual-action-key">T</kbd>
+          </button>
+          <p class="manual-note">ボタンを押した後，SEM画像上の粒子中心をクリックして仮置きします。位置・回転・サイズを調整後，右側のAddで確定します。</p>
+        </section>
+
+        <section class="manual-panel-section manual-list-section" aria-labelledby="particleListHeading">
+          <div class="manual-section-heading">
+            <h2 id="particleListHeading">計測済み粒子</h2>
+            <span id="particleCountChip" class="count-chip">0</span>
+          </div>
+          <div id="manualParticleList" class="manual-particle-list" role="listbox" aria-label="計測済み粒子"></div>
+        </section>
+      </aside>
+
+      <section class="panel manual-viewer-panel" aria-labelledby="viewerHeading">
+        <div class="manual-viewer-toolbar">
+          <div class="manual-viewer-title">
+            <p class="eyebrow">SEM IMAGE</p>
+            <h2 id="viewerHeading">手動フィット</h2>
+            <p id="currentImageName" class="manual-current-image">—</p>
+          </div>
+          <div class="manual-view-controls">
+            <label class="checkbox-control manual-number-toggle" title="保存済み粒子の登録番号をSEM画像上に表示">
+              <input id="showParticleNumbersInput" type="checkbox" checked>
+              <span>粒子番号</span>
+            </label>
+            <button id="zoomOutButton" class="button button-compact button-secondary" type="button" aria-label="縮小">−</button>
+            <output id="zoomReadout" class="manual-zoom-readout">100%</output>
+            <button id="zoomInButton" class="button button-compact button-secondary" type="button" aria-label="拡大">＋</button>
+            <button id="actualPixelButton" class="button button-compact button-secondary" type="button">原寸 1:1</button>
+            <button id="fitViewButton" class="button button-compact button-secondary" type="button">全体表示</button>
+          </div>
+        </div>
+
+        <div id="manualCanvasShell" class="manual-canvas-shell">
+          <canvas id="manualCanvas" tabindex="0" role="img" aria-label="SEM画像と手動配置した3D粒子形状"
+            aria-keyshortcuts="X Y Z Meta+C Meta+V Control+C Control+V Delete Backspace"></canvas>
+          <div id="manualCanvasMessage" class="canvas-message" role="status">
+            <span class="spinner" aria-hidden="true"></span><span>SEM画像を読み込んでいます</span>
+          </div>
+          <div class="manual-canvas-legend" aria-label="操作説明">
+            <span><i class="manual-legend-line saved"></i>保存済み</span>
+            <span><i class="manual-legend-line selected"></i>選択中／未保存</span>
+            <span>drag：3D回転</span>
+            <span>Shift＋drag：移動</span>
+            <span>Option＋drag：2D回転</span>
+            <span>X／Y／Z＋drag：各軸回転</span>
+            <span>人差し指ホイール：図形サイズ</span>
+            <span>Shift＋人差し指ホイール：画像ズーム</span>
+            <span>親指ホイール：画像ズーム</span>
+            <span>⌘C／⌘V：粒子を複製登録</span>
+            <span>Delete：選択粒子を削除</span>
+            <span>Space＋ドラッグ：画像移動</span>
+          </div>
+        </div>
+        <div class="manual-viewer-footer">
+          <p id="interactionHelp">通常ドラッグ＝3D回転，X／Y／Z＋ドラッグ＝各モデル軸回転，Shift＋ドラッグ＝移動，Option＋ドラッグ＝2D回転です。</p>
+          <p id="cursorCoordinate">画像座標：—</p>
+          <div id="shortcutPanel" class="manual-shortcut-panel">
+            <button id="shortcutToggleButton" class="manual-shortcut-toggle" type="button"
+              aria-expanded="false" aria-controls="shortcutList">
+              <span aria-hidden="true">⌨</span><span>ショートカット</span>
+            </button>
+            <section id="shortcutList" class="manual-shortcut-popover" aria-label="ショートカット一覧" hidden>
+              <div class="manual-shortcut-header">
+                <h3>ショートカット一覧</h3>
+                <button id="shortcutCloseButton" class="manual-shortcut-close" type="button" aria-label="ショートカット一覧を閉じる">×</button>
+              </div>
+              <dl class="manual-shortcut-list">
+                <div><dt><kbd>T</kbd></dt><dd>新しい図形を配置</dd></div>
+                <div><dt><kbd>⌘</kbd>/<kbd>Ctrl</kbd>＋<kbd>S</kbd></dt><dd>Add／更新して保存</dd></div>
+                <div><dt><kbd>Delete</kbd>／<kbd>Backspace</kbd></dt><dd>選択粒子を削除</dd></div>
+                <div><dt><kbd>⌘</kbd>/<kbd>Ctrl</kbd>＋<kbd>C</kbd></dt><dd>選択粒子をコピー</dd></div>
+                <div><dt><kbd>⌘</kbd>/<kbd>Ctrl</kbd>＋<kbd>V</kbd></dt><dd>粒子を複製登録</dd></div>
+                <div><dt><kbd>Esc</kbd></dt><dd>配置・編集中の操作を中止</dd></div>
+                <div><dt><kbd>X</kbd>／<kbd>Y</kbd>／<kbd>Z</kbd>＋drag</dt><dd>各モデル軸まわりに回転</dd></div>
+                <div><dt><kbd>Shift</kbd>＋drag</dt><dd>図形を移動</dd></div>
+                <div><dt><kbd>Option</kbd>＋drag</dt><dd>2D面内回転</dd></div>
+                <div><dt><kbd>Space</kbd>＋drag</dt><dd>画像を移動</dd></div>
+                <div><dt>ホイール</dt><dd>図形サイズを変更</dd></div>
+                <div><dt><kbd>Shift</kbd>＋ホイール</dt><dd>画像をズーム</dd></div>
+                <div><dt>矢印キー</dt><dd>図形を1 px移動（Shiftで10 px）</dd></div>
+              </dl>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel manual-inspector" aria-labelledby="inspectorHeading">
+        <div class="manual-inspector-header">
+          <div>
+            <p class="eyebrow">MEASUREMENT</p>
+            <h2 id="inspectorHeading">図形を追加</h2>
+          </div>
+          <span id="editStateBadge" class="manual-badge">未選択</span>
+        </div>
+
+        <div id="inspectorEmpty" class="manual-inspector-empty">
+          <span aria-hidden="true">◇</span>
+          <p>左側で形状を選び，「新しい図形を配置」を押してください。</p>
+        </div>
+
+        <div id="inspectorContent" class="manual-inspector-content" hidden>
+          <label class="field-label" for="inspectorShape">形状</label>
+          <select id="inspectorShape" class="select-control">
+            <option value="rhombic_dodecahedron">Rhombic dodecahedron</option>
+            <option value="chamfered_cube">Chamfered cube</option>
+            <option value="cube">Cube</option>
+          </select>
+
+          <div id="chamferControl" class="chamfer-control" hidden>
+            <div class="manual-range-heading">
+              <label for="chamferHInput">Chamfer parameter <i>h</i></label>
+              <output id="chamferHValue">0.50</output>
+            </div>
+            <input id="chamferHInput" type="range" min="0.05" max="0.95" step="0.05" value="0.50">
+            <p class="manual-note"><i>h</i>=0に近いほどRD，1に近いほどcubeです。</p>
+          </div>
+
+          <dl class="manual-metrics">
+            <div><dt>Projected area</dt><dd id="metricArea">—</dd><small>nm²</small></div>
+            <div class="metric-highlight"><dt>Equivalent radius</dt><dd id="metricRadius">—</dd><small>nm</small></div>
+            <div><dt>Equivalent diameter</dt><dd id="metricDiameter">—</dd><small>nm</small></div>
+            <div><dt>Model scale</dt><dd id="metricScale">—</dd><small>px</small></div>
+          </dl>
+          <p class="manual-note">この面積・半径は，選択した3D形状と姿勢の正投影silhouetteに基づくmodel-conditioned値です。画像segmentationによる直接面積ではありません。</p>
+
+          <div id="qualityWarning" class="manual-quality-warning" hidden></div>
+
+          <label class="manual-include-control">
+            <input id="includeStatisticsInput" type="checkbox" checked>
+            <span>個数基準統計に含める</span>
+          </label>
+          <div id="exclusionReasonField" hidden>
+            <label class="field-label" for="exclusionReasonInput">除外理由</label>
+            <input id="exclusionReasonInput" class="manual-text-input" type="text" placeholder="例：画像端，粒子重複，判定不能">
+          </div>
+
+          <div class="manual-nudge-grid" aria-label="微調整">
+            <button type="button" data-nudge="roll-negative" title="画面内で反時計回りに5度">↶ 5°</button>
+            <button id="resetOrientationButton" type="button">姿勢リセット</button>
+            <button type="button" data-nudge="roll-positive" title="画面内で時計回りに5度">↷ 5°</button>
+            <button type="button" data-nudge="smaller">− サイズ</button>
+            <button id="centerParticleButton" type="button">表示中央へ</button>
+            <button type="button" data-nudge="larger">＋ サイズ</button>
+          </div>
+
+          <label class="field-label" for="particleNotes">メモ</label>
+          <textarea id="particleNotes" class="manual-notes" rows="2" placeholder="重なり，欠け，判断根拠など"></textarea>
+
+          <div class="manual-primary-actions">
+            <button id="commitParticleButton" class="button button-primary" type="button"
+              aria-keyshortcuts="Meta+S Control+S" title="Command＋S：更新して保存">
+              <span id="commitParticleButtonLabel">③ Add</span><kbd class="manual-action-key">⌘S</kbd>
+            </button>
+            <button id="cancelEditButton" class="button button-secondary" type="button">キャンセル</button>
+          </div>
+          <button id="deleteParticleButton" class="button manual-delete-button" type="button"
+            aria-keyshortcuts="Delete Backspace" title="Deleteキー：選択粒子を削除" hidden>この粒子を削除</button>
+          <p class="manual-note manual-save-note">Add／更新時にブラウザー内で投影面積と半径を再計算します。解析ファイルと作業JSONはサーバーへ送信されません。</p>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <dialog id="tiffDialog" class="manual-dialog" aria-labelledby="tiffDialogHeading">
+    <div class="manual-dialog-header">
+      <div>
+        <p class="eyebrow">LOCAL SEM DATASET</p>
+        <h2 id="tiffDialogHeading">TIFFを開く</h2>
+      </div>
+      <div class="manual-dialog-header-actions">
+        <button id="refreshTiffIndexButton" class="manual-dialog-refresh" type="button" title="選択したローカルフォルダを再読み込み">↻ 一覧を更新</button>
+        <button id="closeTiffDialogButton" class="manual-dialog-close" type="button" aria-label="閉じる">×</button>
+      </div>
+    </div>
+    <p class="manual-dialog-note">選択したローカルフォルダ内のTIFFと，その隣接TXT／JSONをブラウザーだけで読み込みます。ファイルはサーバーへアップロードされません。各ディレクトリ見出しの「開く／閉じる」で画像一覧を切り替えられます。</p>
+    <div id="tiffImageList" class="manual-tiff-list" role="radiogroup" aria-label="SEM TIFF一覧"></div>
+    <p id="tiffDialogStatus" class="manual-dialog-status" role="status"></p>
+    <div class="manual-dialog-actions">
+      <button id="cancelTiffButton" class="button button-secondary" type="button">キャンセル</button>
+      <button id="confirmTiffButton" class="button button-primary" type="button">選択したTIFFを開く</button>
+    </div>
+  </dialog>
+
+  </div>
+
+  <div id="toastRegion" class="manual-toast-region" aria-live="polite" aria-atomic="true"></div>
+  <script src="/static/tiff_decoder.js" defer></script>
+  <script src="/static/manual_geometry.js" defer></script>
+  <script src="/static/manual.js" defer></script>
+  <script src="/static/app.js" defer></script>
 </body>
 </html>
