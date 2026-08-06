@@ -49,6 +49,12 @@ def test_browser_local_size_distribution_is_available_without_uploading_files():
     assert "Normal fit" in manual_javascript
     assert "saveSizeDistributionCsv" in manual_javascript
     assert "/api/manual/size-distributions/refresh" in manual_javascript
+    assert "SIZE_DISTRIBUTION_FRAME_WIDTH_PT = 0.5" in manual_javascript
+    assert "SIZE_DISTRIBUTION_LINE_WIDTH_PT = 0.75" in manual_javascript
+    assert "SIZE_DISTRIBUTION_TICK_LABEL_PT = SIZE_DISTRIBUTION_FONT_PT - 1" in manual_javascript
+    assert "SIZE_DISTRIBUTION_HISTOGRAM_ALPHA = 0.6" in manual_javascript
+    assert "SIZE_DISTRIBUTION_X_MARGIN = 0.05" in manual_javascript
+    assert "roundedRectPath(context" in manual_javascript
     assert manual_javascript.count("fetch(") == 1
 
 

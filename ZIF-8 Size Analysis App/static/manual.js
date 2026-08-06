@@ -46,8 +46,22 @@ const SIZE_DISTRIBUTION_FIGURE = {
   height: Math.round(80 / 25.4 * 900),
   dpi: 900,
 };
-const SIZE_DISTRIBUTION_FONT_PX = 7 * SIZE_DISTRIBUTION_FIGURE.dpi / 72;
+const SIZE_DISTRIBUTION_FONT_PT = 7;
+const SIZE_DISTRIBUTION_TICK_LABEL_PT = SIZE_DISTRIBUTION_FONT_PT - 1;
+const SIZE_DISTRIBUTION_FRAME_WIDTH_PT = 0.5;
+const SIZE_DISTRIBUTION_LINE_WIDTH_PT = 0.75;
+const SIZE_DISTRIBUTION_TICK_LENGTH_PT = 3.5;
+const SIZE_DISTRIBUTION_GRID_WIDTH_PT = SIZE_DISTRIBUTION_FRAME_WIDTH_PT * 0.5;
+const SIZE_DISTRIBUTION_FONT_PX = SIZE_DISTRIBUTION_FONT_PT * SIZE_DISTRIBUTION_FIGURE.dpi / 72;
+const SIZE_DISTRIBUTION_TICK_LABEL_PX = SIZE_DISTRIBUTION_TICK_LABEL_PT * SIZE_DISTRIBUTION_FIGURE.dpi / 72;
+const SIZE_DISTRIBUTION_FRAME_WIDTH_PX = SIZE_DISTRIBUTION_FRAME_WIDTH_PT * SIZE_DISTRIBUTION_FIGURE.dpi / 72;
+const SIZE_DISTRIBUTION_LINE_WIDTH_PX = SIZE_DISTRIBUTION_LINE_WIDTH_PT * SIZE_DISTRIBUTION_FIGURE.dpi / 72;
+const SIZE_DISTRIBUTION_TICK_LENGTH_PX = SIZE_DISTRIBUTION_TICK_LENGTH_PT * SIZE_DISTRIBUTION_FIGURE.dpi / 72;
+const SIZE_DISTRIBUTION_GRID_WIDTH_PX = SIZE_DISTRIBUTION_GRID_WIDTH_PT * SIZE_DISTRIBUTION_FIGURE.dpi / 72;
 const SIZE_DISTRIBUTION_TARGET_BIN_COUNT = 20;
+const SIZE_DISTRIBUTION_HISTOGRAM_Y_MARGIN = 1.25;
+const SIZE_DISTRIBUTION_HISTOGRAM_ALPHA = 0.6;
+const SIZE_DISTRIBUTION_X_MARGIN = 0.05;
 
 // Shape colours are deliberately distinct from the yellow selection colour.
 // RD keeps the original turquoise; chamfered cubes use orange and cubes use
@@ -1164,13 +1178,50 @@ function calculateNiceHistogramBins(values) {
   return bins;
 }
 
-function plotNumber(value) {
+function calculateNiceTicks(minimum, maximum, targetCount) {
+  const range = maximum - minimum;
+  if (!(range > 0)) return [minimum];
+  const idealStep = range / targetCount;
+  const magnitude = 10 ** Math.floor(Math.log10(idealStep));
+  const normalisedStep = idealStep / magnitude;
+  const niceNumbers = [1, 2, 2.5, 5, 10];
+  const niceStep = niceNumbers.reduce((best, candidate) => (
+    Math.abs(candidate - normalisedStep) < Math.abs(best - normalisedStep) ? candidate : best
+  ));
+  const step = niceStep * magnitude;
+  const start = Math.floor(minimum / step) * step;
+  const end = Math.ceil(maximum / step) * step;
+  const ticks = [];
+  for (let value = start; value <= end + step * 0.001; value += step) {
+    ticks.push(Number(value.toPrecision(14)));
+  }
+  return ticks.length ? ticks : [minimum, maximum];
+}
+
+function tickDecimals(step) {
+  const number = Math.abs(Number(step));
+  if (!(number > 0)) return 0;
+  let decimals = 0;
+  while (
+    decimals < 12
+      && Math.abs(Math.round(number * (10 ** decimals)) - number * (10 ** decimals)) > 1e-8
+  ) {
+    decimals += 1;
+  }
+  return decimals;
+}
+
+function formatTickNumber(value, step) {
   const number = Number(value);
   if (!Number.isFinite(number)) return "—";
-  if (Math.abs(number) >= 1000 || (Math.abs(number) > 0 && Math.abs(number) < 0.1)) {
-    return number.toExponential(1);
+  const decimals = tickDecimals(step);
+  if (Math.abs(number) >= 1e6 || (Math.abs(number) > 0 && Math.abs(number) < 1e-6)) {
+    return number.toExponential(Math.max(1, decimals));
   }
-  return number.toLocaleString("en-US", { maximumFractionDigits: 1 });
+  return number.toLocaleString("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
 }
 
 function drawSizeDistributionPng(analysisRun, diameters) {
@@ -1194,7 +1245,7 @@ function drawSizeDistributionPng(analysisRun, diameters) {
   const normalStart = Math.max(1e-12, Math.min(...data) * 0.8);
   const normalEnd = Math.max(normalStart + 1e-9, Math.max(...data) * 1.2);
   const normalValues = [];
-  const normalSteps = 600;
+  const normalSteps = 1000;
   if (stats.standardDeviation > 0) {
     for (let index = 0; index <= normalSteps; index += 1) {
       const x = normalStart + (normalEnd - normalStart) * index / normalSteps;
@@ -1206,53 +1257,66 @@ function drawSizeDistributionPng(analysisRun, diameters) {
 
   const width = canvas.width;
   const height = canvas.height;
-  const margin = { left: 360, right: 130, top: 190, bottom: 420 };
+  // These margins reproduce the 60 x 80 mm Matplotlib figure after
+  // tight_layout(pad=0.6) in summarize_shape_statistics.py.
+  const margin = { left: 477, right: 52, top: 200, bottom: 297 };
   const plot = {
     left: margin.left,
     top: margin.top,
     right: width - margin.right,
     bottom: height - margin.bottom,
   };
-  const xMin = Math.min(bins[0], normalStart);
-  const xMax = Math.max(bins[bins.length - 1], normalEnd);
+  const rawXMin = Math.min(bins[0], normalStart);
+  const rawXMax = Math.max(bins[bins.length - 1], normalEnd);
+  const xMargin = (rawXMax - rawXMin) * SIZE_DISTRIBUTION_X_MARGIN;
+  const xMin = rawXMin - xMargin;
+  const xMax = rawXMax + xMargin;
   const histogramMax = Math.max(...densities, 0);
   const normalMax = Math.max(...normalValues.map(([, y]) => y), 0);
-  const yMax = Math.max(histogramMax, normalMax, 1e-12) * 1.25;
+  const yMax = Math.max(histogramMax, normalMax, 1e-12) * SIZE_DISTRIBUTION_HISTOGRAM_Y_MARGIN;
   const xToCanvas = (value) => plot.left + (value - xMin) / (xMax - xMin) * (plot.right - plot.left);
   const yToCanvas = (value) => plot.bottom - value / yMax * (plot.bottom - plot.top);
-  const frameWidth = 5;
-  const lineWidth = 7;
-  const tickFont = `${Math.round(SIZE_DISTRIBUTION_FONT_PX * 0.82)}px Arial, sans-serif`;
-  const labelFont = `${Math.round(SIZE_DISTRIBUTION_FONT_PX)}px Arial, sans-serif`;
-  const smallFont = `${Math.round(SIZE_DISTRIBUTION_FONT_PX * 0.82)}px Arial, sans-serif`;
+  const xTicks = calculateNiceTicks(xMin, xMax, 5);
+  const yTicks = calculateNiceTicks(0, yMax, 9);
+  const xTickStep = xTicks.length > 1 ? xTicks[1] - xTicks[0] : xMax - xMin;
+  const yTickStep = yTicks.length > 1 ? yTicks[1] - yTicks[0] : yMax;
+  const visibleXTicks = xTicks.filter((value) => value >= xMin && value <= xMax);
+  const visibleYTicks = yTicks.filter((value) => value >= 0 && value <= yMax);
+  const tickFont = `${SIZE_DISTRIBUTION_TICK_LABEL_PX}px Arial, sans-serif`;
+  const labelFont = `${SIZE_DISTRIBUTION_FONT_PX}px Arial, sans-serif`;
+  const titleFont = `${(SIZE_DISTRIBUTION_FONT_PT + 1) * SIZE_DISTRIBUTION_FIGURE.dpi / 72}px Arial, sans-serif`;
+  const statFont = tickFont;
 
   context.fillStyle = "#ffffff";
   context.fillRect(0, 0, width, height);
-  context.fillStyle = "#111111";
+  context.fillStyle = "#000000";
   context.textAlign = "center";
   context.textBaseline = "middle";
-  context.font = `${Math.round(SIZE_DISTRIBUTION_FONT_PX * 1.15)}px Arial, sans-serif`;
-  context.fillText(analysisRun, width / 2, 78);
+  context.font = titleFont;
+  context.fillText(analysisRun, width / 2, 100);
 
-  const yTicks = 5;
-  context.font = tickFont;
-  context.textAlign = "right";
-  context.strokeStyle = "rgba(0, 0, 0, 0.16)";
-  context.lineWidth = 2;
-  for (let index = 0; index <= yTicks; index += 1) {
-    const value = yMax * index / yTicks;
+  // Matplotlib's ax.grid(True, alpha=0.3, linewidth=0.25) draws major grid
+  // lines in both directions before the histogram is painted.
+  context.strokeStyle = "rgba(0, 0, 0, 0.3)";
+  context.lineWidth = SIZE_DISTRIBUTION_GRID_WIDTH_PX;
+  for (const value of visibleXTicks) {
+    const x = xToCanvas(value);
+    context.beginPath();
+    context.moveTo(x, plot.top);
+    context.lineTo(x, plot.bottom);
+    context.stroke();
+  }
+  for (const value of visibleYTicks) {
     const y = yToCanvas(value);
     context.beginPath();
     context.moveTo(plot.left, y);
     context.lineTo(plot.right, y);
     context.stroke();
-    context.fillStyle = "#222222";
-    context.fillText(plotNumber(value), plot.left - 18, y);
   }
 
-  context.fillStyle = "rgba(76, 155, 76, 0.60)";
-  context.strokeStyle = "#111111";
-  context.lineWidth = frameWidth;
+  context.fillStyle = `rgba(0, 128, 0, ${SIZE_DISTRIBUTION_HISTOGRAM_ALPHA})`;
+  context.strokeStyle = `rgba(0, 0, 0, ${SIZE_DISTRIBUTION_HISTOGRAM_ALPHA})`;
+  context.lineWidth = SIZE_DISTRIBUTION_FRAME_WIDTH_PX;
   for (let index = 0; index < counts.length; index += 1) {
     const x0 = xToCanvas(bins[index]);
     const x1 = xToCanvas(bins[index + 1]);
@@ -1269,43 +1333,61 @@ function drawSizeDistributionPng(analysisRun, diameters) {
       if (index === 0) context.moveTo(px, py);
       else context.lineTo(px, py);
     });
-    context.strokeStyle = "#0000cc";
-    context.lineWidth = lineWidth;
+    context.strokeStyle = "blue";
+    context.lineWidth = SIZE_DISTRIBUTION_LINE_WIDTH_PX;
     context.stroke();
   }
 
-  context.strokeStyle = "#111111";
-  context.lineWidth = frameWidth;
+  context.strokeStyle = "#000000";
+  context.lineWidth = SIZE_DISTRIBUTION_FRAME_WIDTH_PX;
   context.strokeRect(plot.left, plot.top, plot.right - plot.left, plot.bottom - plot.top);
-  const xTicks = 5;
+
   context.font = tickFont;
+  context.textBaseline = "middle";
+  context.textAlign = "right";
+  for (const value of visibleYTicks) {
+    const y = yToCanvas(value);
+    context.fillStyle = "#000000";
+    context.fillText(formatTickNumber(value, yTickStep), plot.left - SIZE_DISTRIBUTION_TICK_LENGTH_PX, y);
+  }
   context.textAlign = "center";
-  for (let index = 0; index <= xTicks; index += 1) {
-    const value = xMin + (xMax - xMin) * index / xTicks;
+  for (const value of visibleXTicks) {
+    const x = xToCanvas(value);
+    context.fillStyle = "#000000";
+    context.fillText(
+      formatTickNumber(value, xTickStep),
+      x,
+      plot.bottom + SIZE_DISTRIBUTION_TICK_LENGTH_PX + 33,
+    );
+  }
+
+  // ax.tick_params(direction="in", top=True, right=True) with Matplotlib's
+  // default 3.5 pt tick length.
+  context.strokeStyle = "#000000";
+  context.lineWidth = SIZE_DISTRIBUTION_FRAME_WIDTH_PX;
+  for (const value of visibleXTicks) {
     const x = xToCanvas(value);
     context.beginPath();
     context.moveTo(x, plot.bottom);
-    context.lineTo(x, plot.bottom - 18);
+    context.lineTo(x, plot.bottom - SIZE_DISTRIBUTION_TICK_LENGTH_PX);
     context.moveTo(x, plot.top);
-    context.lineTo(x, plot.top + 18);
+    context.lineTo(x, plot.top + SIZE_DISTRIBUTION_TICK_LENGTH_PX);
     context.stroke();
-    context.fillStyle = "#222222";
-    context.fillText(plotNumber(value), x, plot.bottom + 42);
   }
-  for (let index = 0; index <= yTicks; index += 1) {
-    const y = yToCanvas(yMax * index / yTicks);
+  for (const value of visibleYTicks) {
+    const y = yToCanvas(value);
     context.beginPath();
     context.moveTo(plot.left, y);
-    context.lineTo(plot.left + 18, y);
+    context.lineTo(plot.left + SIZE_DISTRIBUTION_TICK_LENGTH_PX, y);
     context.moveTo(plot.right, y);
-    context.lineTo(plot.right - 18, y);
+    context.lineTo(plot.right - SIZE_DISTRIBUTION_TICK_LENGTH_PX, y);
     context.stroke();
   }
 
   context.font = labelFont;
-  context.fillStyle = "#111111";
+  context.fillStyle = "#000000";
   context.textAlign = "center";
-  context.fillText("Area-equivalent diameter [nm]", (plot.left + plot.right) / 2, height - 112);
+  context.fillText("Area-equivalent diameter [nm]", (plot.left + plot.right) / 2, height - 109);
   context.save();
   context.translate(85, (plot.top + plot.bottom) / 2);
   context.rotate(-Math.PI / 2);
@@ -1313,18 +1395,18 @@ function drawSizeDistributionPng(analysisRun, diameters) {
   context.restore();
 
   if (normalValues.length) {
-    const legendX = plot.left + 22;
-    const legendY = plot.top + 42;
-    context.strokeStyle = "#0000cc";
-    context.lineWidth = lineWidth;
+    const legendX = plot.left + 38;
+    const legendY = plot.top + 101;
+    context.strokeStyle = "blue";
+    context.lineWidth = SIZE_DISTRIBUTION_LINE_WIDTH_PX;
     context.beginPath();
     context.moveTo(legendX, legendY);
-    context.lineTo(legendX + 55, legendY);
+    context.lineTo(legendX + 150, legendY);
     context.stroke();
-    context.fillStyle = "#111111";
-    context.font = smallFont;
+    context.fillStyle = "#000000";
+    context.font = statFont;
     context.textAlign = "left";
-    context.fillText("Normal fit", legendX + 70, legendY);
+    context.fillText("Normal fit", legendX + 210, legendY);
   }
 
   const cvText = stats.cvPercent == null ? "n/a" : `${stats.cvPercent.toFixed(1)}%`;
@@ -1335,19 +1417,28 @@ function drawSizeDistributionPng(analysisRun, diameters) {
     `CV = ${cvText}`,
     `D50 = ${stats.median.toFixed(1)} nm`,
   ];
-  const boxWidth = 430;
-  const boxHeight = 36 + statLines.length * 43;
-  const boxLeft = plot.right - boxWidth - 18;
-  const boxTop = plot.top + 20;
-  context.fillStyle = "rgba(255, 255, 255, 0.92)";
-  context.strokeStyle = "#777777";
-  context.lineWidth = frameWidth;
-  context.fillRect(boxLeft, boxTop, boxWidth, boxHeight);
-  context.strokeRect(boxLeft, boxTop, boxWidth, boxHeight);
-  context.fillStyle = "#111111";
-  context.font = smallFont;
+  context.font = statFont;
+  const textPadding = 0.3 * SIZE_DISTRIBUTION_TICK_LABEL_PX;
+  const textLineHeight = SIZE_DISTRIBUTION_TICK_LABEL_PX * 0.92;
+  const textWidth = Math.max(...statLines.map((line) => context.measureText(line).width));
+  const boxWidth = textWidth + textPadding * 2;
+  const boxHeight = statLines.length * textLineHeight + textPadding * 2;
+  const boxRight = plot.left + (plot.right - plot.left) * 0.95;
+  const boxTop = plot.top + (plot.bottom - plot.top) * 0.05;
+  context.fillStyle = "rgba(255, 255, 255, 0.9)";
+  context.strokeStyle = "gray";
+  context.lineWidth = SIZE_DISTRIBUTION_FRAME_WIDTH_PX;
+  roundedRectPath(context, boxRight - boxWidth, boxTop, boxWidth, boxHeight, textPadding);
+  context.fill();
+  context.stroke();
+  context.fillStyle = "#000000";
   context.textAlign = "right";
-  statLines.forEach((line, index) => context.fillText(line, boxLeft + boxWidth - 18, boxTop + 32 + index * 43));
+  context.textBaseline = "top";
+  statLines.forEach((line, index) => context.fillText(
+    line,
+    boxRight - textPadding,
+    boxTop + textPadding + index * textLineHeight,
+  ));
 
   return canvas.toDataURL("image/png");
 }
