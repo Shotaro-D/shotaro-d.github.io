@@ -22,6 +22,9 @@ def test_browser_reads_and_saves_user_files_without_uploading_them():
     assert "file.text()" in manual_javascript
     assert "localStorage" in manual_javascript
     assert "new Blob" in manual_javascript
+    assert "async function indexLocalSessions()" in manual_javascript
+    assert "await indexLocalSessions();" in manual_javascript
+    assert "localJsonFilesByName" in manual_javascript
     assert manual_javascript.count("fetch(") == 1
     assert 'fetch(url, { credentials: "same-origin" })' in manual_javascript
     assert 'dom.manualCanvasMessage.hidden = true;' in manual_javascript
