@@ -163,6 +163,18 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "csrf_token": session["csrf_token"],
         })
 
+    @app.get("/api/manual/meshes")
+    def manual_meshes():
+        """Return only the public, non-user-specific 3D model geometry."""
+
+        mesh_path = project_root / "static" / "manual_meshes.json"
+        try:
+            payload = json.loads(mesh_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            app.logger.exception("Could not read static manual mesh geometry")
+            return _json_error(f"3Dモデル情報を読み込めません：{exc}", 500)
+        return jsonify(payload)
+
     return app
 
 
