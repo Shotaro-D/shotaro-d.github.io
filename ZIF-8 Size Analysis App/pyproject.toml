@@ -1,7 +1,7 @@
 [project]
 name = "zif8-size-analysis-app"
 version = "0.1.0"
-description = "Authenticated web application for ZIF-8 SEM shape statistics"
+description = "Authenticated browser-local web application for manual ZIF-8 SEM 3D fitting"
 requires-python = ">=3.10"
 dependencies = [
   "Flask>=3.0,<4",

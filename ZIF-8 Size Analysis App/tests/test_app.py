@@ -7,7 +7,10 @@ from app import create_app
 
 
 def make_client(monkeypatch, tmp_path: Path):
-    monkeypatch.setenv("APP_USERS_JSON", json.dumps({"boss@example.com": generate_password_hash("secret-password")}))
+    monkeypatch.setenv(
+        "APP_USERS_JSON",
+        json.dumps({"boss@example.com": generate_password_hash("secret-password")}),
+    )
     monkeypatch.setenv("APP_SECRET_KEY", "test-secret-key")
     monkeypatch.setenv("APP_INSTANCE_DIR", str(tmp_path / "instance"))
     app = create_app({"TESTING": True, "SECRET_KEY": "test-secret-key"})
@@ -15,17 +18,27 @@ def make_client(monkeypatch, tmp_path: Path):
 
 
 def login(client):
-    response = client.post("/login", data={"email": "boss@example.com", "password": "secret-password"})
+    response = client.post(
+        "/login",
+        data={"email": "boss@example.com", "password": "secret-password"},
+    )
     assert response.status_code == 200
     session_response = client.get("/api/session")
     assert session_response.status_code == 200
     return session_response.get_json()["csrf_token"]
 
 
-def test_login_has_no_file_upload_or_server_analysis_endpoint(monkeypatch, tmp_path: Path):
+def test_login_and_mesh_api_do_not_accept_user_files(monkeypatch, tmp_path: Path):
     client = make_client(monkeypatch, tmp_path)
     assert client.get("/api/session").status_code == 401
+
     csrf = login(client)
+    mesh_response = client.get("/api/manual/meshes")
+    assert mesh_response.status_code == 200
+    payload = mesh_response.get_json()
+    assert set(payload) == {"meshes", "chamfered_meshes"}
+    assert {"rhombic_dodecahedron", "chamfered_cube", "cube"} <= set(payload["meshes"])
+
     upload_attempt = client.post(
         "/api/jobs",
         data={"files": "this endpoint must not exist"},
@@ -36,12 +49,18 @@ def test_login_has_no_file_upload_or_server_analysis_endpoint(monkeypatch, tmp_p
 
 
 def test_production_session_cookie_is_hardened(monkeypatch, tmp_path: Path):
-    monkeypatch.setenv("APP_USERS_JSON", json.dumps({"boss@example.com": generate_password_hash("secret-password")}))
+    monkeypatch.setenv(
+        "APP_USERS_JSON",
+        json.dumps({"boss@example.com": generate_password_hash("secret-password")}),
+    )
     monkeypatch.setenv("APP_SECRET_KEY", "test-secret-key")
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.setenv("APP_INSTANCE_DIR", str(tmp_path / "instance"))
     client = create_app({"TESTING": True, "SECRET_KEY": "test-secret-key"}).test_client()
-    response = client.post("/login", data={"email": "boss@example.com", "password": "secret-password"})
+    response = client.post(
+        "/login",
+        data={"email": "boss@example.com", "password": "secret-password"},
+    )
     cookie = response.headers["Set-Cookie"]
     assert "Secure" in cookie
     assert "HttpOnly" in cookie

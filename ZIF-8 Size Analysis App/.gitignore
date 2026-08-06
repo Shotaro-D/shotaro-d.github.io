@@ -18,3 +18,4 @@ users.json
 *.json
 !requirements.txt
 !instance/.gitkeep
+!static/manual_meshes.json
