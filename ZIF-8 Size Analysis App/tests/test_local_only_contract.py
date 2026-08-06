@@ -25,10 +25,13 @@ def test_browser_reads_and_saves_user_files_without_uploading_them():
     assert "async function indexLocalSessions()" in manual_javascript
     assert "await indexLocalSessions();" in manual_javascript
     assert "localJsonFilesByName" in manual_javascript
+    assert "inspectLocalImage" in manual_javascript
+    assert "decodeLocalRaster" in manual_javascript
+    assert "tif|tiff|bmp" in manual_javascript
     assert manual_javascript.count("fetch(") == 1
     assert 'fetch(url, { credentials: "same-origin" })' in manual_javascript
     assert 'dom.manualCanvasMessage.hidden = true;' in manual_javascript
-    assert "TIFF一覧から画像を選択してください。" in manual_javascript
+    assert "TIFF／BMP一覧から画像を選択してください。" in manual_javascript
     assert "FormData" in app_javascript  # credentials only, never the selected folder
     assert "/api/jobs" not in manual_javascript + app_javascript
     assert "サーバーへ送信されません" in html

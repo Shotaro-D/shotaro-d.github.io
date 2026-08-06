@@ -101,6 +101,7 @@ const state = {
   currentImageBuffer: null,
   currentImageHash: "",
   localSessions: new Map(),
+  localImageInspections: new Map(),
   localStarted: false,
 };
 
@@ -121,7 +122,7 @@ async function startManualApp() {
     state.chamferedMeshes = meshPayload.chamfered_meshes || {};
     setConnection("online", "ローカルのみ");
     dom.manualCanvasMessage.querySelector(".spinner").hidden = true;
-    dom.manualCanvasMessage.querySelector("span:last-child").textContent = "ローカルフォルダからTIFFを選択してください。";
+    dom.manualCanvasMessage.querySelector("span:last-child").textContent = "ローカルフォルダからTIFF／BMPを選択してください。";
     dom.manualCanvasMessage.classList.remove("is-error");
     dom.manualCanvasMessage.hidden = false;
   } catch (error) {
@@ -308,29 +309,54 @@ function localFileByPath(path) {
   return state.localFileMap.get(String(path).replaceAll("\\", "/")) || null;
 }
 
+function isSupportedLocalImageFile(file) {
+  return /\.(tif|tiff|bmp)$/i.test(String(file?.name || ""));
+}
+
+function localImageStem(file) {
+  return String(file?.name || "").replace(/\.(tif|tiff|bmp)$/i, "");
+}
+
+function localImageFormat(file) {
+  return /\.bmp$/i.test(String(file?.name || "")) ? "BMP" : "TIFF";
+}
+
 function localImageFiles() {
-  return state.localFiles.filter((file) => /\.(tif|tiff)$/i.test(file.name) && !isExcludedLocalPath(normalisedFilePath(file)));
+  return state.localFiles.filter((file) => isSupportedLocalImageFile(file) && !isExcludedLocalPath(normalisedFilePath(file)));
 }
 
 function localImageInventory() {
   return localImageFiles().map((file) => {
     const imageId = normalisedFilePath(file);
-    const stored = state.localSessions?.get(imageId);
+    const inspection = state.localImageInspections?.get(imageId);
+    const stored = inspection?.session || state.localSessions?.get(imageId);
     const sidecar = findLocalSidecar(file);
-    const summary = stored?.summary || {};
-    const calibration = stored?.calibration || {};
+    const summary = inspection?.summary || stored?.summary || {};
+    const calibration = inspection?.calibration || stored?.calibration || {};
+    const particleCount = Array.isArray(stored?.particles) ? stored.particles.length : 0;
+    const includedCount = Number(summary.count || 0);
+    const scaleState = inspection?.error
+      ? "read_error"
+      : calibration.verified_by_user
+        ? "verified"
+        : calibration.source === "scale_bar"
+          ? "automatic"
+          : calibration.source === "metadata_fallback"
+            ? "metadata"
+            : "manual_required";
     return {
       image_id: imageId,
       name: file.name,
       relative_path: imageId,
       directory: fileDirectory(file) || "(選択フォルダ直下)",
-      analysis_status: stored?.particles?.length ? "analyzed" : "not_analyzed",
-      is_analyzed: Boolean(stored?.particles?.length),
-      particle_count: stored?.particles?.length || 0,
-      included_count: summary.count || 0,
-      excluded_count: summary.excluded_count || 0,
-      has_session_json: Boolean(stored),
-      has_work_json: Boolean(stored),
+      analysis_status: particleCount ? "analyzed" : "not_analyzed",
+      is_analyzed: Boolean(particleCount),
+      particle_count: particleCount,
+      included_count: includedCount,
+      excluded_count: Number(summary.excluded_count || 0),
+      has_session_json: inspection?.session_source === "json",
+      has_work_json: inspection?.session_source === "json",
+      has_browser_session: inspection?.session_source === "browser_storage",
       has_legacy_work_json: false,
       has_same_name_json: false,
       has_exported_json: false,
@@ -339,12 +365,18 @@ function localImageInventory() {
       companion_txt_name: sidecar?.name || "",
       scale_verified: Boolean(calibration.verified_by_user),
       scale_verified_at: calibration.verified_at || "",
+      scale_state: scaleState,
+      scale_source: calibration.source || "",
+      pixel_size_nm_per_px: calibration.pixel_size_nm_per_px ?? null,
+      scale_confidence: calibration.confidence ?? null,
+      local_read_error: inspection?.error || "",
       mean_diameter_nm: summary.mean_diameter_nm,
       std_diameter_nm: summary.std_diameter_nm,
-      diameter_sum_nm: summary.mean_diameter_nm == null ? null : Number(summary.mean_diameter_nm) * Number(summary.count || 0),
+      cv_percent: summary.cv_percent,
+      diameter_sum_nm: summary.mean_diameter_nm == null ? null : Number(summary.mean_diameter_nm) * includedCount,
       diameter_sum_sq_nm2: summary.mean_diameter_nm == null || summary.std_diameter_nm == null
         ? null
-        : Number(summary.count || 0) * (Number(summary.std_diameter_nm) ** 2 + Number(summary.mean_diameter_nm) ** 2),
+        : includedCount * (Number(summary.std_diameter_nm) ** 2 + Number(summary.mean_diameter_nm) ** 2),
     };
   });
 }
@@ -360,6 +392,7 @@ function setLocalFiles(files) {
     state.localJsonFilesByName.set(file.name, filesWithName);
   }
   state.localSessions = new Map();
+  state.localImageInspections = new Map();
   state.localSessionIndexReady = false;
   state.availableImages = [];
   state.selectedImageId = null;
@@ -374,18 +407,18 @@ function setLocalFiles(files) {
   dom.manualCanvasMessage.hidden = false;
   dom.manualCanvasMessage.classList.remove("is-error");
   dom.manualCanvasMessage.querySelector(".spinner").hidden = false;
-  dom.manualCanvasMessage.querySelector("span:last-child").textContent = "ローカルTIFFと対応JSONを読み込んでいます。";
+  dom.manualCanvasMessage.querySelector("span:last-child").textContent = "ローカルTIFF／BMPと対応JSONを読み込んでいます。";
   loadTiffInventory(false).catch((error) => {
     dom.manualCanvasMessage.classList.add("is-error");
     dom.manualCanvasMessage.querySelector(".spinner").hidden = true;
-    dom.manualCanvasMessage.querySelector("span:last-child").textContent = `TIFF一覧を作成できません：${error.message}`;
-    toast(`TIFF一覧を作成できません：${error.message}`, true);
+    dom.manualCanvasMessage.querySelector("span:last-child").textContent = `画像一覧を作成できません：${error.message}`;
+    toast(`画像一覧を作成できません：${error.message}`, true);
   });
 }
 
 function findLocalSidecar(imageFile) {
   const directory = fileDirectory(imageFile);
-  const stem = imageFile.name.replace(/\.(tif|tiff)$/i, "");
+  const stem = localImageStem(imageFile);
   const candidates = [
     `${directory}/${stem}.txt`,
     `${directory}/Archive/${stem}.txt`,
@@ -715,7 +748,7 @@ function buildLocalCalibration(image, sidecar, tiffMetadata) {
 
 function localSessionCandidates(imageFile) {
   const directory = fileDirectory(imageFile);
-  const stem = imageFile.name.replace(/\.(tif|tiff)$/i, "");
+  const stem = localImageStem(imageFile);
   const directCandidates = [
     `${directory}/${stem}_manual_count.json`,
     `${directory}/work/${stem}_manual_count.json`,
@@ -757,6 +790,159 @@ function isManualSessionForImage(candidate, imageFile) {
       && Number.isFinite(Number(particle.scale_px)));
 }
 
+function cloneLocalSession(session) {
+  if (!session || typeof session !== "object") return null;
+  try {
+    return JSON.parse(JSON.stringify(session));
+  } catch (_) {
+    return null;
+  }
+}
+
+function matchingLocalSession(candidate, imageFile, imageHash) {
+  if (!isManualSessionForImage(candidate, imageFile)) return false;
+  const candidateHash = String(candidate?.dataset?.image_sha256 || "");
+  return !candidateHash || candidateHash === imageHash;
+}
+
+function indexedSessionForImage(imageFile, imageHash, parsedFiles) {
+  const browserSession = readLocalStoredSession(imageHash);
+  if (matchingLocalSession(browserSession, imageFile, imageHash)) {
+    return { session: cloneLocalSession(browserSession), source: "browser_storage" };
+  }
+  for (const candidateFile of localSessionCandidates(imageFile)) {
+    const candidate = parsedFiles.get(normalisedFilePath(candidateFile));
+    if (matchingLocalSession(candidate, imageFile, imageHash)) {
+      return { session: cloneLocalSession(candidate), source: "json" };
+    }
+  }
+  return { session: null, source: null };
+}
+
+function calibrationForLocalSession(session, automaticCalibration) {
+  const imported = session?.calibration;
+  const authoritative = Boolean(
+    imported && (imported.verified_by_user || imported.source === "manual_override"),
+  );
+  return authoritative
+    ? { ...imported }
+    : {
+      ...automaticCalibration,
+      revision: Math.max(1, Number(imported?.revision || 1)),
+    };
+}
+
+function refreshIndexedSessionSummary(session, calibration) {
+  if (!session) return { session: null, summary: localSummary([]) };
+  const copy = cloneLocalSession(session);
+  if (!copy) return { session: null, summary: localSummary([]) };
+  copy.calibration = calibration;
+  const pixelSize = Number(calibration?.pixel_size_nm_per_px || 0);
+  for (const particle of copy.particles || []) {
+    const areaPx2 = Number(particle?.projected_area_px2);
+    if (!Number.isFinite(areaPx2) || areaPx2 <= 0 || !(pixelSize > 0)) continue;
+    const areaNm2 = areaPx2 * pixelSize * pixelSize;
+    const radiusNm = Math.sqrt(areaNm2 / Math.PI);
+    particle.projected_area_nm2 = areaNm2;
+    particle.equivalent_radius_nm = radiusNm;
+    particle.equivalent_diameter_nm = 2 * radiusNm;
+  }
+  const summary = localSummary(copy.particles || []);
+  copy.summary = summary;
+  return { session: copy, summary };
+}
+
+function setLocalIndexProgress(completed, total, phase = "画像情報を確認") {
+  const text = `${phase}（${completed}/${total}）：JSON，TIFF／BMP，TXTは端末内だけで読み取ります。`;
+  const message = dom.manualCanvasMessage;
+  if (message) {
+    message.hidden = false;
+    message.classList.remove("is-error");
+    const spinner = message.querySelector(".spinner");
+    if (spinner) spinner.hidden = false;
+    const label = message.querySelector("span:last-child");
+    if (label) label.textContent = text;
+  }
+  if (dom.tiffDialogStatus) dom.tiffDialogStatus.textContent = text;
+}
+
+async function inspectLocalImage(imageFile, parsedFiles) {
+  const arrayBuffer = await imageFile.arrayBuffer();
+  const imageHash = await sha256Hex(arrayBuffer);
+  const decoded = await decodeLocalRaster(imageFile, arrayBuffer);
+  const image = {
+    naturalWidth: decoded.width,
+    naturalHeight: decoded.height,
+    tiffPixels: decoded.rgba,
+    tiffMetadata: decoded.metadata,
+  };
+  const sidecarFile = findLocalSidecar(imageFile);
+  const sidecar = sidecarFile ? parseSidecar(await decodeLocalTextFile(sidecarFile)) : {};
+  const tiffMetadata = parseTiffMetadata(decoded.metadata);
+  const automatic = buildLocalCalibration(image, sidecar, tiffMetadata);
+  const indexed = indexedSessionForImage(imageFile, imageHash, parsedFiles);
+  const calibration = calibrationForLocalSession(indexed.session, automatic.calibration);
+  const prepared = refreshIndexedSessionSummary(indexed.session, calibration);
+  const session = prepared.session;
+  if (session) {
+    session.image = {
+      ...(session.image || {}),
+      name: imageFile.name,
+      width: decoded.width,
+      height: decoded.height,
+      source_format: decoded.metadata.sourceFormat,
+      footer: automatic.footer || session.image?.footer || { y_start: decoded.height },
+    };
+    session.dataset = {
+      ...(session.dataset || {}),
+      image_sha256: imageHash,
+      image_path: normalisedFilePath(imageFile),
+      sidecar_path: sidecarFile ? normalisedFilePath(sidecarFile) : null,
+      browser_local_only: true,
+    };
+  }
+  return {
+    image_hash: imageHash,
+    session,
+    session_source: indexed.source,
+    calibration,
+    summary: prepared.summary,
+    footer: automatic.footer,
+    error: "",
+  };
+}
+
+async function mapLocalImagesWithConcurrency(imageFiles, parsedFiles) {
+  const results = new Array(imageFiles.length);
+  const workerCount = Math.min(2, imageFiles.length);
+  let nextIndex = 0;
+  let completed = 0;
+  async function worker() {
+    while (nextIndex < imageFiles.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      const imageFile = imageFiles[index];
+      try {
+        results[index] = await inspectLocalImage(imageFile, parsedFiles);
+      } catch (error) {
+        results[index] = {
+          image_hash: "",
+          session: null,
+          session_source: null,
+          calibration: {},
+          summary: localSummary([]),
+          footer: null,
+          error: error?.message || "ローカル画像を読み込めませんでした。",
+        };
+      }
+      completed += 1;
+      setLocalIndexProgress(completed, imageFiles.length);
+    }
+  }
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
+}
+
 async function indexLocalSessions() {
   const imageFiles = localImageFiles();
   const candidateFiles = new Map();
@@ -771,13 +957,14 @@ async function indexLocalSessions() {
   }));
 
   state.localSessions = new Map();
-  for (const imageFile of imageFiles) {
-    for (const candidateFile of localSessionCandidates(imageFile)) {
-      const candidate = parsedFiles.get(normalisedFilePath(candidateFile));
-      if (!isManualSessionForImage(candidate, imageFile)) continue;
-      state.localSessions.set(normalisedFilePath(imageFile), candidate);
-      break;
-    }
+  state.localImageInspections = new Map();
+  setLocalIndexProgress(0, imageFiles.length, "対応JSONを読み込み，画像別の校正・統計を確認");
+  const inspections = await mapLocalImagesWithConcurrency(imageFiles, parsedFiles);
+  for (let index = 0; index < imageFiles.length; index += 1) {
+    const imageId = normalisedFilePath(imageFiles[index]);
+    const inspection = inspections[index];
+    state.localImageInspections.set(imageId, inspection);
+    if (inspection?.session) state.localSessions.set(imageId, inspection.session);
   }
   state.localSessionIndexReady = true;
 }
@@ -803,7 +990,18 @@ function readLocalStoredSession(imageHash) {
 function persistLocalSession() {
   if (!state.session || !state.currentImageHash) return;
   if (state.currentImageFile) {
-    state.localSessions.set(normalisedFilePath(state.currentImageFile), state.session);
+    const imageId = normalisedFilePath(state.currentImageFile);
+    state.localSessions.set(imageId, state.session);
+    const previous = state.localImageInspections.get(imageId) || {};
+    state.localImageInspections.set(imageId, {
+      ...previous,
+      image_hash: state.currentImageHash,
+      session: state.session,
+      session_source: "browser_storage",
+      calibration: state.session.calibration || previous.calibration || {},
+      summary: state.session.summary || localSummary(state.session.particles || []),
+      error: "",
+    });
   }
   try {
     window.localStorage.setItem(localStorageKey(state.currentImageHash), JSON.stringify(state.session));
@@ -857,36 +1055,25 @@ function refreshLocalSessionMeasurements() {
   state.session.summary = localSummary(state.session.particles);
 }
 
-async function createLocalSession(imageFile, image, imageHash, arrayBuffer) {
+async function createLocalSession(imageFile, image, imageHash) {
+  const imageId = normalisedFilePath(imageFile);
+  const indexed = state.localImageInspections.get(imageId);
+  const indexedMatchesImage = indexed?.image_hash === imageHash;
+  let imported = indexedMatchesImage ? cloneLocalSession(indexed.session) : null;
+  let calibration = indexedMatchesImage ? { ...(indexed.calibration || {}) } : null;
+  let footer = indexedMatchesImage ? indexed.footer : null;
   const sidecarFile = findLocalSidecar(imageFile);
-  const sidecar = sidecarFile ? parseSidecar(await decodeLocalTextFile(sidecarFile)) : {};
-  const tiffMetadata = parseTiffMetadata(image.tiffMetadata);
-  const localCalibration = buildLocalCalibration(image, sidecar, tiffMetadata);
-  const stored = readLocalStoredSession(imageHash);
-  let imported = stored;
-  if (!imported) {
-    for (const candidateFile of localSessionCandidates(imageFile)) {
-      const candidate = await readJsonFile(candidateFile);
-      const candidateHash = String(candidate?.dataset?.image_sha256 || "");
-      const candidateImage = String(candidate?.image?.name || "");
-      if (candidate && (!candidateHash || candidateHash === imageHash)
-        && (!candidateImage || candidateImage === imageFile.name)) {
-        imported = candidate;
-        break;
-      }
+  if (!calibration || !Object.keys(calibration).length) {
+    const sidecar = sidecarFile ? parseSidecar(await decodeLocalTextFile(sidecarFile)) : {};
+    const tiffMetadata = parseTiffMetadata(image.tiffMetadata);
+    const automatic = buildLocalCalibration(image, sidecar, tiffMetadata);
+    footer = automatic.footer;
+    if (!imported) {
+      const stored = readLocalStoredSession(imageHash);
+      imported = matchingLocalSession(stored, imageFile, imageHash) ? cloneLocalSession(stored) : null;
     }
+    calibration = calibrationForLocalSession(imported, automatic.calibration);
   }
-  const importedCalibration = imported?.calibration;
-  const importedIsAuthoritative = Boolean(
-    importedCalibration
-      && (importedCalibration.verified_by_user || importedCalibration.source === "manual_override"),
-  );
-  const calibration = importedIsAuthoritative
-    ? importedCalibration
-    : {
-      ...localCalibration.calibration,
-      revision: Math.max(1, Number(importedCalibration?.revision || 1)),
-    };
   const session = imported || {
     schema_version: "1.1",
     analysis_version: "1.2.0-browser-local",
@@ -905,11 +1092,11 @@ async function createLocalSession(imageFile, image, imageHash, arrayBuffer) {
     name: imageFile.name,
     width: image.naturalWidth,
     height: image.naturalHeight,
-    source_format: "TIFF",
-    delivery: "original_tiff_bytes",
+    source_format: image.tiffMetadata?.sourceFormat || localImageFormat(imageFile),
+    delivery: localImageFormat(imageFile) === "TIFF" ? "original_tiff_bytes" : "original_bmp_bytes",
     browser_decode: "lossless_full_resolution",
     resampled: false,
-    footer: localCalibration.footer || session.image?.footer || { y_start: image.naturalHeight },
+    footer: footer || session.image?.footer || { y_start: image.naturalHeight },
   };
   session.dataset = {
     ...(session.dataset || {}),
@@ -1045,24 +1232,58 @@ function writeBooleanPreference(key, value) {
   }
 }
 
-async function loadTiff(fileOrUrl) {
-  let arrayBuffer;
-  if (fileOrUrl && typeof fileOrUrl.arrayBuffer === "function") {
-    arrayBuffer = await fileOrUrl.arrayBuffer();
-    state.currentImageBuffer = arrayBuffer;
-  } else if (fileOrUrl === "/api/manual/image" && state.currentImageBuffer) {
-    arrayBuffer = state.currentImageBuffer;
+async function decodeLocalBmp(file) {
+  let bitmap = null;
+  if (typeof createImageBitmap === "function") {
+    bitmap = await createImageBitmap(file);
   } else {
-    throw new Error("TIFFは選択したローカルファイルから読み込みます。");
+    const objectUrl = URL.createObjectURL(file);
+    try {
+      bitmap = await new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error("BMPをブラウザーでデコードできませんでした。"));
+        image.src = objectUrl;
+      });
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
   }
-  const decoded = decodeTiff(arrayBuffer);
+  const canvas = document.createElement("canvas");
+  canvas.width = bitmap.width || bitmap.naturalWidth;
+  canvas.height = bitmap.height || bitmap.naturalHeight;
+  const context = canvas.getContext("2d", { alpha: false, willReadFrequently: true });
+  if (!context) throw new Error("BMP描画用Canvasを初期化できませんでした。");
+  context.drawImage(bitmap, 0, 0);
+  bitmap.close?.();
+  return {
+    width: canvas.width,
+    height: canvas.height,
+    rgba: context.getImageData(0, 0, canvas.width, canvas.height).data,
+    metadata: {
+      sourceFormat: "BMP",
+      resampled: false,
+      hitachiXpCommentBytes: null,
+    },
+  };
+}
+
+async function decodeLocalRaster(file, arrayBuffer = null) {
+  if (!file || typeof file.arrayBuffer !== "function") {
+    throw new Error("ローカルTIFFまたはBMPを選択してください。");
+  }
+  if (localImageFormat(file) === "BMP") return decodeLocalBmp(file);
+  return decodeTiff(arrayBuffer || await file.arrayBuffer());
+}
+
+function canvasFromDecodedRaster(decoded) {
   const canvas = document.createElement("canvas");
   canvas.width = decoded.width;
   canvas.height = decoded.height;
   const context = canvas.getContext("2d", { alpha: false });
-  if (!context) throw new Error("TIFF描画用Canvasを初期化できませんでした。");
+  if (!context) throw new Error("画像描画用Canvasを初期化できませんでした。");
   context.putImageData(new ImageData(decoded.rgba, decoded.width, decoded.height), 0, 0);
-  // Canvas is the full-resolution decoded TIFF raster.  These aliases keep
+  // Canvas is the full-resolution locally decoded raster.  These aliases keep
   // the drawing code independent of HTMLImageElement without resampling.
   canvas.naturalWidth = decoded.width;
   canvas.naturalHeight = decoded.height;
@@ -1071,12 +1292,23 @@ async function loadTiff(fileOrUrl) {
   return canvas;
 }
 
+async function loadTiff(fileOrUrl, arrayBuffer = null) {
+  let file = fileOrUrl;
+  if (fileOrUrl === "/api/manual/image" && state.currentImageFile) file = state.currentImageFile;
+  if (!file || typeof file.arrayBuffer !== "function") {
+    throw new Error("画像は選択したローカルファイルから読み込みます。");
+  }
+  const bytes = arrayBuffer || await file.arrayBuffer();
+  state.currentImageBuffer = bytes;
+  return canvasFromDecodedRaster(await decodeLocalRaster(file, bytes));
+}
+
 function validateTiffRaster(image, session) {
   const expectedWidth = Number(session?.image?.width);
   const expectedHeight = Number(session?.image?.height);
   if (image.naturalWidth !== expectedWidth || image.naturalHeight !== expectedHeight) {
     throw new Error(
-      `TIFF原本とsessionの画像寸法が一致しません（TIFF ${image.naturalWidth}×${image.naturalHeight}，`
+      `画像原本とsessionの画像寸法が一致しません（画像 ${image.naturalWidth}×${image.naturalHeight}，`
       + `session ${expectedWidth}×${expectedHeight}）。`,
     );
   }
@@ -1106,7 +1338,7 @@ async function saveArtifact(kind) {
   setConnection("loading", "ローカル保存中");
   try {
     if (!state.session || !state.image) throw new Error("先にローカルTIFFを開いてください。");
-    const stem = String(state.session.image.name || "sem_image").replace(/\.(tif|tiff)$/i, "");
+    const stem = String(state.session.image.name || "sem_image").replace(/\.(tif|tiff|bmp)$/i, "");
     if (kind === "json") {
       downloadLocal(new Blob([JSON.stringify(state.session, null, 2)], { type: "application/json;charset=utf-8" }), `${stem}_manual_count.json`);
     } else if (kind === "txt") {
@@ -1246,7 +1478,7 @@ function drawNativeParticleNumber(ctx, particle, label) {
 function renderSession() {
   const imageRecord = state.session?.image;
   dom.currentImageName.textContent = imageRecord
-    ? `${imageRecord.name} · TIFF原本 · ${imageRecord.width}×${imageRecord.height} px`
+      ? `${imageRecord.name} · ${imageRecord.source_format || "SEM画像"}原本 · ${imageRecord.width}×${imageRecord.height} px`
     : "—";
   renderSummary();
   renderScale();
@@ -1257,17 +1489,17 @@ function renderSession() {
 
 async function openTiffDialog() {
   if ((state.working && state.dirty) || state.isPlacing || state.saving) {
-    toast("未保存の粒子編集を保存またはキャンセルしてからTIFFを切り替えてください。", true);
+    toast("未保存の粒子編集を保存またはキャンセルしてから画像を切り替えてください。", true);
     return;
   }
   dom.openTiffButton.disabled = true;
-  dom.tiffDialogStatus.textContent = "TIFF一覧を読み込んでいます。";
+  dom.tiffDialogStatus.textContent = "SEM画像一覧を読み込んでいます。";
   try {
     await loadTiffInventory(false);
     if (typeof dom.tiffDialog.showModal === "function") dom.tiffDialog.showModal();
     else dom.tiffDialog.setAttribute("open", "");
   } catch (error) {
-    toast(`TIFF一覧を取得できません：${error.message}`, true);
+    toast(`SEM画像一覧を取得できません：${error.message}`, true);
   } finally {
     dom.openTiffButton.disabled = false;
   }
@@ -1296,14 +1528,14 @@ async function loadTiffInventory(refresh) {
   if (selectedItem) state.openTiffDirectories.add(tiffDirectoryLabel(selectedItem));
   renderTiffImageList();
   const directoryCount = groupedImages.length;
-  const sourceLabel = refresh ? "選択フォルダを再読み込みしました" : "選択フォルダから読み込みました";
+  const sourceLabel = refresh ? "選択フォルダの校正・解析情報を再読み込みしました" : "選択フォルダの校正・解析情報を読み込みました";
   dom.tiffDialogStatus.textContent = `${directoryCount}ディレクトリ，${state.availableImages.length}画像 · ${sourceLabel}。`;
   if (!state.image) {
     dom.manualCanvasMessage.classList.remove("is-error");
     dom.manualCanvasMessage.querySelector(".spinner").hidden = true;
     dom.manualCanvasMessage.querySelector("span:last-child").textContent = state.availableImages.length
-      ? "TIFF一覧から画像を選択してください。"
-      : "選択フォルダにTIFFが見つかりません。";
+      ? "TIFF／BMP一覧から画像を選択してください。"
+      : "選択フォルダにTIFF／BMPが見つかりません。";
     dom.manualCanvasMessage.hidden = false;
   }
 }
@@ -1311,12 +1543,12 @@ async function loadTiffInventory(refresh) {
 async function refreshTiffIndex() {
   if (state.switchingImage || dom.refreshTiffIndexButton.disabled) return;
   dom.refreshTiffIndexButton.disabled = true;
-  dom.tiffDialogStatus.textContent = "選択したローカルフォルダ内のTIFFと隣接JSON／TXTを再探索しています。";
+  dom.tiffDialogStatus.textContent = "選択したローカルフォルダ内のTIFF／BMP，JSON，TXTを再探索しています。";
   try {
     await loadTiffInventory(true);
   } catch (error) {
     dom.tiffDialogStatus.textContent = `一覧を更新できません：${error.message}`;
-    toast(`TIFF一覧を更新できません：${error.message}`, true);
+    toast(`SEM画像一覧を更新できません：${error.message}`, true);
   } finally {
     dom.refreshTiffIndexButton.disabled = false;
   }
@@ -1324,7 +1556,7 @@ async function refreshTiffIndex() {
 
 function renderTiffImageList() {
   if (!state.availableImages.length) {
-    dom.tiffImageList.innerHTML = '<p class="manual-dialog-empty">TIFFが見つかりません。</p>';
+    dom.tiffImageList.innerHTML = '<p class="manual-dialog-empty">TIFF／BMPが見つかりません。</p>';
     dom.confirmTiffButton.disabled = true;
     return;
   }
@@ -1344,7 +1576,7 @@ function renderTiffImageList() {
           aria-expanded="${isOpen}" aria-controls="${itemContainerId}">
           <span class="manual-tiff-folder-icon" aria-hidden="true"></span>
           <strong class="manual-tiff-breadcrumb">${breadcrumb}</strong>
-          <span class="manual-tiff-directory-count">${group.images.length} TIFF</span>
+          <span class="manual-tiff-directory-count">${group.images.length} 画像</span>
           <span class="manual-tiff-directory-summary" aria-label="${escapeHtml(renderTiffDirectoryStats(directoryStats))}" title="登録粒子数 / 統計対象数，統計対象粒子の平均径，1σ，CV，スケール確認済み画像数">${renderTiffDirectoryStats(directoryStats)}</span>
           <span class="manual-tiff-toggle-label">${isOpen ? "閉じる" : "開く"}</span>
           <span class="manual-tiff-disclosure" aria-hidden="true">›</span>
@@ -1440,18 +1672,33 @@ function renderTiffImageRow(item) {
     const selected = item.image_id === state.selectedImageId;
     const jsonLabel = item.has_work_json
       ? "作業JSON"
+      : (item.has_browser_session
+        ? "ブラウザー保存"
       : (item.has_legacy_work_json
         ? "旧作業JSON（同じフォルダへ移行）"
-        : (item.has_same_name_json ? "同名JSON" : (item.has_exported_json ? "出力JSON" : "新規")));
+        : (item.has_same_name_json ? "同名JSON" : (item.has_exported_json ? "出力JSON" : "新規"))));
     const txtLabel = item.has_companion_txt ? `TXT ${item.companion_txt_name}` : "TXTなし";
     const particleCount = integer(item.particle_count, 0);
     const includedCount = integer(item.included_count, 0);
+    const hasStatistics = Number(item.included_count) > 0 && Number.isFinite(Number(item.mean_diameter_nm));
+    const statisticsLabel = hasStatistics
+      ? `保存 ${particleCount} · 対象 ${includedCount} · μ ${formatted(item.mean_diameter_nm, 1)} nm · 1σ ${formatted(item.std_diameter_nm, 1)} nm · CV ${formatted(item.cv_percent, 1)}%`
+      : `保存 ${particleCount} · 統計対象 ${includedCount}`;
+    const scaleLabel = item.scale_state === "verified"
+      ? `Scale確認済み · ${formatted(item.pixel_size_nm_per_px, 6)} nm/px`
+      : (item.scale_state === "automatic"
+        ? `Scale自動検出 · ${formatted(item.pixel_size_nm_per_px, 6)} nm/px · 信頼度 ${formatted(100 * Number(item.scale_confidence), 1)}%`
+        : (item.scale_state === "metadata"
+          ? `Scale要確認（metadata）· ${formatted(item.pixel_size_nm_per_px, 6)} nm/px`
+          : (item.scale_state === "read_error"
+            ? `読込失敗：${item.local_read_error}`
+            : "Scale要手動入力")));
     const analysisBadge = item.is_analyzed
       ? `<span class="manual-tiff-analyzed" title="保存済み${particleCount}粒子，統計対象${includedCount}粒子"><span aria-hidden="true">✓</span>${particleCount}粒子</span>`
       : '<span class="manual-tiff-not-analyzed"><span aria-hidden="true">—</span>未解析</span>';
-    const scaleBadge = item.scale_verified
+    const scaleBadge = item.scale_state === "verified"
       ? `<span class="manual-tiff-scale-verified" title="スケールバー確認済み${item.scale_verified_at ? `：${escapeHtml(item.scale_verified_at)}` : ""}"><span aria-hidden="true">✓</span>スケール確認済み</span>`
-      : '<span class="manual-tiff-scale-unverified" title="スケールバーは自動検出値。手動確認・保存は未実施"><span aria-hidden="true">○</span>スケール未確認</span>';
+      : `<span class="manual-tiff-scale-unverified" title="${escapeHtml(scaleLabel)}"><span aria-hidden="true">○</span>${item.scale_state === "automatic" ? "Scale自動" : "Scale未確認"}</span>`;
     return `
       <button class="manual-tiff-row${selected ? " is-selected" : ""}" type="button"
         role="radio" aria-checked="${selected}" data-image-id="${escapeHtml(item.image_id)}">
@@ -1459,6 +1706,8 @@ function renderTiffImageRow(item) {
         <span class="manual-tiff-main">
           <strong>${escapeHtml(item.name)}</strong>
           <small>${escapeHtml(jsonLabel)} · ${escapeHtml(txtLabel)}</small>
+          <small>${escapeHtml(statisticsLabel)}</small>
+          <small>${escapeHtml(scaleLabel)}</small>
         </span>
         <span class="manual-tiff-row-status">
           ${item.is_current ? '<span class="manual-tiff-current">表示中</span>' : ""}
@@ -1500,17 +1749,17 @@ async function openSelectedTiff() {
   dom.confirmTiffButton.disabled = true;
   dom.cancelTiffButton.disabled = true;
   dom.closeTiffDialogButton.disabled = true;
-  dom.tiffDialogStatus.textContent = "TIFF，JSON，TXTを読み込んでいます。";
+  dom.tiffDialogStatus.textContent = "選択画像を読み込んでいます。";
   setConnection("loading", "ローカル読込中");
   try {
     const imageFile = localFileByPath(state.selectedImageId);
-    if (!imageFile) throw new Error("選択したTIFFがローカルファイル一覧にありません。");
+    if (!imageFile) throw new Error("選択した画像がローカルファイル一覧にありません。");
     const arrayBuffer = await imageFile.arrayBuffer();
     state.currentImageFile = imageFile;
     state.currentImageBuffer = arrayBuffer;
     state.currentImageHash = await sha256Hex(arrayBuffer);
-    const image = await loadTiff(imageFile);
-    const session = await createLocalSession(imageFile, image, state.currentImageHash, arrayBuffer);
+    const image = await loadTiff(imageFile, arrayBuffer);
+    const session = await createLocalSession(imageFile, image, state.currentImageHash);
     validateTiffRaster(image, session);
     state.session = session;
     state.image = image;
@@ -1530,11 +1779,11 @@ async function openSelectedTiff() {
     state.switchingImage = false;
     closeTiffDialog();
     const hasSidecar = Boolean(findLocalSidecar(imageFile));
-    toast(`${state.session.image.name}：ローカルTIFF，${hasSidecar ? "TXT" : "TXTなし"}，JSON／ブラウザー保存を使用`);
+    toast(`${state.session.image.name}：ローカル${localImageFormat(imageFile)}，${hasSidecar ? "TXT" : "TXTなし"}，JSON／ブラウザー保存を使用`);
   } catch (error) {
     setConnection("online", "ローカルのみ");
     dom.tiffDialogStatus.textContent = `開けません：${error.message}`;
-    toast(`TIFFを開けません：${error.message}`, true);
+    toast(`画像を開けません：${error.message}`, true);
   } finally {
     state.switchingImage = false;
     dom.confirmTiffButton.disabled = false;
