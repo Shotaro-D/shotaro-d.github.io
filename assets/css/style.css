@@ -549,6 +549,126 @@ a:hover {
   padding: .6rem 0 .6rem .2rem;
 }
 
+.calculator-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.4rem;
+}
+
+.calculator-card {
+  padding: 1.2rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.calculator-card h2,
+.calculator-explanation h2 {
+  margin: 0 0 1rem;
+  font-size: 1.05rem;
+}
+
+.calculator-form fieldset {
+  min-width: 0;
+  margin: 0 0 1rem;
+  padding: .85rem;
+  border: 1px solid var(--line);
+}
+
+.calculator-form legend {
+  padding: 0 .35rem;
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.calculator-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(90px, 1fr);
+  gap: .55rem .7rem;
+  align-items: center;
+}
+
+.calculator-fields label {
+  font-size: .82rem;
+}
+
+.calculator-fields input,
+.calculator-fields select {
+  width: 100%;
+  min-width: 0;
+  padding: .4rem .45rem;
+  border: 1px solid var(--line);
+  border-radius: .25rem;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.calculator-card .button {
+  width: 100%;
+  margin-top: .15rem;
+  cursor: pointer;
+}
+
+.calculator-message {
+  margin: .7rem 0 0;
+  color: var(--accent);
+  font-size: .82rem;
+}
+
+.calculator-result {
+  width: 100%;
+  margin-top: 1rem;
+  border-collapse: collapse;
+  font-size: .8rem;
+}
+
+.calculator-result caption {
+  margin-bottom: .45rem;
+  text-align: left;
+  color: var(--muted);
+  font-size: .75rem;
+}
+
+.calculator-result th,
+.calculator-result td {
+  padding: .55rem .45rem;
+  border: 1px solid var(--line);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.calculator-result th {
+  font-weight: 700;
+}
+
+.calculator-rounding-warning {
+  margin: .65rem 0 0;
+  padding: .55rem .7rem;
+  border-left: 3px solid var(--accent);
+  background: var(--pale);
+  color: var(--ink);
+  font-size: .78rem;
+  line-height: 1.65;
+}
+
+.calculator-explanation {
+  margin-top: 2.4rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--line);
+}
+
+.calculator-explanation p {
+  max-width: 72ch;
+  font-size: .88rem;
+  line-height: 1.75;
+}
+
+.calculator-formula {
+  padding: .8rem 1rem;
+  border-left: 3px solid var(--accent);
+  background: var(--pale);
+}
+
 .award-list li {
   display: grid;
   grid-template-columns: 120px 1fr;
@@ -664,6 +784,10 @@ a:hover {
 
   .page-grid {
     gap: 1rem;
+  }
+
+  .calculator-grid {
+    grid-template-columns: 1fr;
   }
 
   .timeline li,
