@@ -20,6 +20,15 @@ Then visit `http://localhost:8000`.
 
 Commit and push to `main` — GitHub Pages redeploys automatically. When adding pages, also add an entry to `sitemap.xml`.
 
+## Testing the photon energy calculator
+
+The calculator has dependency-free regression tests for the live JavaScript behavior and an independent high-precision reference calculation:
+
+```sh
+node tests/light-energy-calculation.test.mjs
+python3 tests/test_light_energy_reference.py
+```
+
 ## Updating content
 
 Each page is a standalone HTML file. Publications, presentations, awards, and useful X-ray tools can each be edited without touching the layout code.

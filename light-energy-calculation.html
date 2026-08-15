@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-JY6FW28PTB"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-JY6FW28PTB');
+  </script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#fbfbf8" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#141917" media="(prefers-color-scheme: dark)">
+  <meta name="description" content="波長と光子エネルギーを相互変換する計算ツール">
+  <link rel="canonical" href="https://shotaro-d.github.io/light-energy-calculation.html">
+  <link rel="alternate" hreflang="ja" href="https://shotaro-d.github.io/light-energy-calculation.html">
+  <link rel="alternate" hreflang="x-default" href="https://shotaro-d.github.io/light-energy-calculation.html">
+
+  <title>光子エネルギーと波長の変換 | 段上翔太郎</title>
+  <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
+  <link rel="stylesheet" href="assets/css/style.css">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="段上翔太郎 | Shotaro Danjo">
+  <meta property="og:title" content="光子エネルギーと波長の変換 | 段上翔太郎">
+  <meta property="og:description" content="波長と光子エネルギーを相互変換する計算ツール">
+  <meta property="og:url" content="https://shotaro-d.github.io/light-energy-calculation.html">
+  <meta property="og:image" content="https://shotaro-d.github.io/assets/images/face.jpg">
+  <meta property="og:locale" content="ja_JP">
+  <meta name="twitter:card" content="summary">
+</head>
+
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="site-name" href="index.html">段上 翔太郎<small>Shotaro Danjo</small></a>
+      <div class="header-actions">
+        <nav id="nav" class="nav" aria-label="メインメニュー">
+          <a href="index.html">Home</a>
+          <a href="profile.html">Profile</a>
+          <a href="publications.html">Publication</a>
+          <a href="presentations.html">Conference</a>
+          <a href="award.html">Award</a>
+          <a aria-current="page" href="resources.html">Others</a>
+        </nav>
+
+        <button class="menu-button" type="button" aria-expanded="false" aria-controls="nav">メニュー<span class="sr-only">を開く</span></button>
+
+        <nav class="language-switch" aria-label="言語選択">
+          <a aria-current="page" lang="ja" href="light-energy-calculation.html">JP</a>
+          <a lang="en" hreflang="en" href="en/resources.html">EN</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="page-hero compact">
+      <div class="container">
+        <p class="eyebrow">CALCULATOR</p>
+
+        <h1>光子エネルギーと波長の変換</h1>
+
+        <p>波長と光子エネルギーを相互に変換する計算ツールです。</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container page-grid">
+        <aside class="side-heading">光学計算ツール</aside>
+
+        <div class="content">
+          <div class="calculator-grid">
+            <article class="calculator-card">
+              <h2>Ⅰ．波長を光子エネルギーに変換</h2>
+
+              <form id="wavelength-form" class="calculator-form">
+                <fieldset>
+                  <legend>入力値の設定</legend>
+
+                  <div class="calculator-fields">
+                    <label for="wavelength-value">波長</label>
+                    <input id="wavelength-value" name="wavelength" type="number" value="550" min="0" step="any" required>
+
+                    <label for="wavelength-unit">単位</label>
+                    <select id="wavelength-unit" name="wavelength-unit">
+                      <option value="1e-12">pm</option>
+                      <option value="1e-10" selected>Å</option>
+                      <option value="1e-9">nm</option>
+                      <option value="1e-6">μm</option>
+                      <option value="1e-3">mm</option>
+                      <option value="1e-2">cm</option>
+                      <option value="1">m</option>
+                      <option value="1e3">km</option>
+                      <option value="1e6">Mm</option>
+                    </select>
+                  </div>
+                </fieldset>
+
+                <fieldset>
+                  <legend>出力値の設定</legend>
+
+                  <div class="calculator-fields">
+                    <label for="wavelength-output-unit">出力するエネルギーの単位</label>
+                    <select id="wavelength-output-unit" name="energy-unit">
+                      <option value="1e-15">feV</option>
+                      <option value="1e-12">peV</option>
+                      <option value="1e-9">neV</option>
+                      <option value="1e-6">μeV</option>
+                      <option value="1e-3">meV</option>
+                      <option value="1">eV</option>
+                      <option value="1e3" selected>keV</option>
+                      <option value="1e6">MeV</option>
+                      <option value="1e9">GeV</option>
+                      <option value="J">J</option>
+                    </select>
+
+                    <label for="wavelength-digits">出力値の小数点以下の桁数</label>
+                    <input id="wavelength-digits" name="digits" type="number" value="5" min="0" max="100" step="1" required>
+                  </div>
+
+                </fieldset>
+
+                <button class="button button-outline" type="submit">波長から光子エネルギーに変換実行</button>
+                <p class="calculator-message" id="wavelength-message" role="alert" hidden></p>
+              </form>
+
+              <table class="calculator-result">
+                <caption>計算結果</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">入力値（波長）</th>
+                    <th scope="col">出力値（エネルギー）</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td id="wavelength-input-result">—</td>
+                    <td id="wavelength-output-result">—</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <p class="calculator-rounding-warning" id="wavelength-rounding-warning" role="status" hidden>計算結果は正の値ですが，指定した小数点以下の桁数では0に丸められています。桁数を増やしてください。</p>
+            </article>
+
+            <article class="calculator-card">
+              <h2>Ⅱ．光子エネルギーを波長に変換</h2>
+
+              <form id="energy-form" class="calculator-form">
+                <fieldset>
+                  <legend>入力値の設定</legend>
+
+                  <div class="calculator-fields">
+                    <label for="energy-value">光子エネルギー</label>
+                    <input id="energy-value" name="energy" type="number" value="35" min="0" step="any" required>
+
+                    <label for="energy-unit">単位</label>
+                    <select id="energy-unit" name="energy-unit">
+                      <option value="1e-15">feV</option>
+                      <option value="1e-12">peV</option>
+                      <option value="1e-9">neV</option>
+                      <option value="1e-6">μeV</option>
+                      <option value="1e-3">meV</option>
+                      <option value="1">eV</option>
+                      <option value="1e3" selected>keV</option>
+                      <option value="1e6">MeV</option>
+                      <option value="1e9">GeV</option>
+                      <option value="J">J</option>
+                      <option value="scaled-J">×10^(-19) [J]</option>
+                    </select>
+                  </div>
+                </fieldset>
+
+                <fieldset>
+                  <legend>出力値の設定</legend>
+
+                  <div class="calculator-fields">
+                    <label for="energy-output-unit">出力する波長の単位</label>
+                    <select id="energy-output-unit" name="wavelength-unit">
+                      <option value="1e-12">pm</option>
+                      <option value="1e-10" selected>Å</option>
+                      <option value="1e-9">nm</option>
+                      <option value="1e-6">μm</option>
+                      <option value="1e-3">mm</option>
+                      <option value="1e-2">cm</option>
+                      <option value="1">m</option>
+                      <option value="1e3">km</option>
+                      <option value="1e6">Mm</option>
+                    </select>
+
+                    <label for="energy-digits">出力値の小数点以下の桁数</label>
+                    <input id="energy-digits" name="digits" type="number" value="5" min="0" max="100" step="1" required>
+                  </div>
+
+                </fieldset>
+
+                <button class="button button-outline" type="submit">光子エネルギーから波長に変換実行</button>
+                <p class="calculator-message" id="energy-message" role="alert" hidden></p>
+              </form>
+
+              <table class="calculator-result">
+                <caption>計算結果</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">入力値（エネルギー）</th>
+                    <th scope="col">出力値（波長）</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td id="energy-input-result">—</td>
+                    <td id="energy-output-result">—</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <p class="calculator-rounding-warning" id="energy-rounding-warning" role="status" hidden>計算結果は正の値ですが，指定した小数点以下の桁数では0に丸められています。桁数を増やしてください。</p>
+            </article>
+          </div>
+
+          <section class="calculator-explanation">
+            <h2>計算ツールの説明</h2>
+
+            <p>入力値と出力値の単位をプルダウンから選択できます。例えば，波長550 nmを入力する場合は，単位を「nm」に設定し，波長に「550」と入力してください。</p>
+
+            <p>光子エネルギーの入力単位「×10^(-19) [J]」では，10<sup>−19</sup> Jを省略して入力できます。例えば，3.972 × 10<sup>−19</sup> Jは，単位を「×10^(-19) [J]」に設定し，入力値を「3.972」としてください。</p>
+
+            <p>出力値は小数表示で示します。出力値の小数点以下の桁数を指定できます。正の計算結果が指定した桁数によってゼロに丸められる場合は，結果の下に警告を表示します。</p>
+
+            <p>この計算での波長 λ は真空中の波長である。媒質中の波長を用いる場合は，屈折率を考慮して真空波長に換算してから入力してください。</p>
+
+            <h2>計算方法</h2>
+
+            <p class="calculator-formula"><code>E = hc / λ</code></p>
+
+            <p>ここで，真空中の光速は <code>c = 2.99792458 × 10<sup>8</sup> m/s</code>，プランク定数は <code>h = 6.62607015 × 10<sup>−34</sup> J・s</code>，換算には <code>1 eV = 1.602176634 × 10<sup>−19</sup> J</code> を用いています。</p>
+
+            <h2>定数の出典</h2>
+
+            <p>真空中の光速 <code>c</code>，プランク定数 <code>h</code>，および電気素量 <code>e</code> は，SIを定義する厳密な値としてNISTの資料に基づいています。</p>
+
+            <ul>
+              <li><a href="https://www.nist.gov/pml/special-publication-330/sp-330-section-2" target="_blank" rel="noopener noreferrer">NIST SP 330, Section 2: The International System of Units (SI)</a></li>
+              <li><a href="https://physics.nist.gov/cuu/Constants/" target="_blank" rel="noopener noreferrer">NIST CODATA Recommended Values of the Fundamental Physical Constants: 2022</a></li>
+              <li>Mohr, P. J.; Newell, D. B.; Taylor, B. N.; Tiesinga, E., “CODATA recommended values of the fundamental physical constants: 2022,” <i>Rev. Mod. Phys.</i> <b>97</b>, 025002 (2025). <a href="https://doi.org/10.1103/RevModPhys.97.025002" target="_blank" rel="noopener noreferrer">DOI: 10.1103/RevModPhys.97.025002</a></li>
+            </ul>
+
+            <p><a href="resources.html">便利なツール一覧へ戻る</a></p>
+          </section>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <p>段上 翔太郎 / Shotaro Danjo</p>
+
+      <p><a href="mailto:s.danjo@cheme.kyoto-u.ac.jp">s.danjo@cheme.kyoto-u.ac.jp</a></p>
+
+      <p>© 2026 Shotaro Danjo</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/main.js"></script>
+  <script>
+    (() => {
+      const LIGHT_SPEED_M_S = 299792458;
+      const PLANCK_J_S = 6.62607015e-34;
+      const EV_J = 1.602176634e-19;
+      const HC_J_M = LIGHT_SPEED_M_S * PLANCK_J_S;
+      const HC_EV_M = HC_J_M / EV_J;
+
+      const wavelengthForm = document.getElementById('wavelength-form');
+      const energyForm = document.getElementById('energy-form');
+
+      const formatValue = (value, digits) => {
+        if (!Number.isFinite(value)) {
+          throw new Error('計算結果が数値の範囲を超えました。入力値または単位を確認してください。');
+        }
+        return value.toLocaleString('en-US', {
+          useGrouping: false,
+          minimumFractionDigits: digits,
+          maximumFractionDigits: digits
+        });
+      };
+
+      const requireFinitePositive = (value) => {
+        if (!Number.isFinite(value) || value <= 0) {
+          throw new Error('計算結果が数値の範囲を超えました。入力値または単位を確認してください。');
+        }
+        return value;
+      };
+
+      const readPositiveNumber = (input) => {
+        const value = Number(input.value);
+        if (!Number.isFinite(value) || value <= 0) {
+          throw new Error('0より大きい有限の数値を入力してください。');
+        }
+        return value;
+      };
+
+      const readDigits = (input) => {
+        const rawValue = input.value.trim();
+        if (!/^(?:0|[1-9]\d?|100)$/.test(rawValue)) {
+          throw new Error('小数点以下の桁数は0から100までの整数で指定してください。');
+        }
+        return Number(rawValue);
+      };
+
+      const setMessage = (element, message = '') => {
+        element.textContent = message;
+        element.hidden = !message;
+      };
+
+      const setRoundingWarning = (element, formattedValue = '') => {
+        const roundedToZero = /^0(?:\.0+)?$/.test(formattedValue);
+        element.hidden = !roundedToZero;
+      };
+
+      const clearResult = (inputId, outputId) => {
+        document.getElementById(inputId).textContent = '—';
+        document.getElementById(outputId).textContent = '—';
+      };
+
+      const photonEnergyFromWavelength = (value, wavelengthUnit, energyUnit) => {
+        const wavelengthFactor = Number(wavelengthUnit.value);
+        let coefficient;
+
+        if (energyUnit.value === 'J') {
+          coefficient = HC_J_M / wavelengthFactor;
+        } else {
+          coefficient = HC_EV_M / wavelengthFactor / Number(energyUnit.value);
+        }
+
+        return requireFinitePositive(coefficient / value);
+      };
+
+      const wavelengthFromPhotonEnergy = (value, energyUnit, wavelengthUnit) => {
+        const wavelengthFactor = Number(wavelengthUnit.value);
+        let coefficient;
+
+        if (energyUnit.value === 'J') {
+          coefficient = HC_J_M / wavelengthFactor;
+        } else if (energyUnit.value === 'scaled-J') {
+          coefficient = HC_J_M / 1e-19 / wavelengthFactor;
+        } else {
+          coefficient = HC_EV_M / Number(energyUnit.value) / wavelengthFactor;
+        }
+
+        return requireFinitePositive(coefficient / value);
+      };
+
+      wavelengthForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const message = document.getElementById('wavelength-message');
+        const roundingWarning = document.getElementById('wavelength-rounding-warning');
+        setMessage(message);
+        setRoundingWarning(roundingWarning);
+        clearResult('wavelength-input-result', 'wavelength-output-result');
+
+        try {
+          const value = readPositiveNumber(document.getElementById('wavelength-value'));
+          const unit = document.getElementById('wavelength-unit');
+          const outputUnit = document.getElementById('wavelength-output-unit');
+          const digits = readDigits(document.getElementById('wavelength-digits'));
+          const outputValue = photonEnergyFromWavelength(value, unit, outputUnit);
+          const formatted = formatValue(outputValue, digits);
+          setRoundingWarning(roundingWarning, formatted);
+
+          document.getElementById('wavelength-input-result').textContent = `${value} ${unit.options[unit.selectedIndex].text}`;
+          document.getElementById('wavelength-output-result').textContent = `${formatted} ${outputUnit.options[outputUnit.selectedIndex].text}`;
+        } catch (error) {
+          setMessage(message, error.message);
+        }
+      });
+
+      energyForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const message = document.getElementById('energy-message');
+        const roundingWarning = document.getElementById('energy-rounding-warning');
+        setMessage(message);
+        setRoundingWarning(roundingWarning);
+        clearResult('energy-input-result', 'energy-output-result');
+
+        try {
+          const value = readPositiveNumber(document.getElementById('energy-value'));
+          const unit = document.getElementById('energy-unit');
+          const outputUnit = document.getElementById('energy-output-unit');
+          const digits = readDigits(document.getElementById('energy-digits'));
+          const outputValue = wavelengthFromPhotonEnergy(value, unit, outputUnit);
+          const formatted = formatValue(outputValue, digits);
+          setRoundingWarning(roundingWarning, formatted);
+
+          document.getElementById('energy-input-result').textContent = `${value} ${unit.options[unit.selectedIndex].text}`;
+          document.getElementById('energy-output-result').textContent = `${formatted} ${outputUnit.options[outputUnit.selectedIndex].text}`;
+        } catch (error) {
+          setMessage(message, error.message);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
