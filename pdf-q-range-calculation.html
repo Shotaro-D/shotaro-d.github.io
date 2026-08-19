@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-JY6FW28PTB"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-JY6FW28PTB');
+  </script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#fbfbf8" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#141917" media="(prefers-color-scheme: dark)">
+  <meta name="description" content="格子定数とQ範囲からPDF測定での主要反射の収録可否を確認する計算ツール">
+  <link rel="canonical" href="https://shotaro-d.github.io/pdf-q-range-calculation.html">
+  <link rel="alternate" hreflang="ja" href="https://shotaro-d.github.io/pdf-q-range-calculation.html">
+  <link rel="alternate" hreflang="en" href="https://shotaro-d.github.io/en/pdf-q-range-calculation.html">
+  <link rel="alternate" hreflang="x-default" href="https://shotaro-d.github.io/pdf-q-range-calculation.html">
+
+  <title>PDF測定Q範囲の設計 | 段上翔太郎</title>
+  <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
+  <link rel="stylesheet" href="assets/css/style.css">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="段上翔太郎 | Shotaro Danjo">
+  <meta property="og:title" content="PDF測定Q範囲の設計 | 段上翔太郎">
+  <meta property="og:description" content="格子定数とQ範囲からPDF測定での主要反射の収録可否を確認する計算ツール">
+  <meta property="og:url" content="https://shotaro-d.github.io/pdf-q-range-calculation.html">
+  <meta property="og:image" content="https://shotaro-d.github.io/assets/images/face.jpg">
+  <meta property="og:locale" content="ja_JP">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta name="twitter:card" content="summary">
+</head>
+
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="site-name" href="index.html">段上 翔太郎<small>Shotaro Danjo</small></a>
+      <div class="header-actions">
+        <nav id="nav" class="nav" aria-label="メインメニュー">
+          <a href="index.html">Home</a>
+          <a href="profile.html">Profile</a>
+          <a href="publications.html">Publication</a>
+          <a href="presentations.html">Conference</a>
+          <a href="award.html">Award</a>
+          <a aria-current="page" href="resources.html">Others</a>
+        </nav>
+        <button class="menu-button" type="button" aria-expanded="false" aria-controls="nav">メニュー<span class="sr-only">を開く</span></button>
+        <nav class="language-switch" aria-label="言語選択">
+          <a aria-current="page" lang="ja" href="pdf-q-range-calculation.html">JP</a>
+          <a lang="en" hreflang="en" href="en/pdf-q-range-calculation.html">EN</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="page-hero compact">
+      <div class="container">
+        <p class="eyebrow">CALCULATOR</p>
+        <h1>PDF測定Q範囲の設計</h1>
+        <p>格子定数と測定範囲から，主要な低角Bragg反射の収録可否とPDFの実空間分解能を確認する計算ツールです。</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container page-grid">
+        <aside class="side-heading">PDF測定ツール</aside>
+        <div class="content">
+          <form id="pdf-q-form" class="calculator-form">
+            <fieldset>
+              <legend>試料と測定条件</legend>
+              <div class="calculator-fields">
+                <label for="lattice-constant">立方晶の格子定数 a [Å]</label>
+                <input id="lattice-constant" name="lattice-constant" type="number" value="16.99" min="0.001" step="any" required>
+
+                <label for="xray-wavelength">X線波長 λ [Å]</label>
+                <input id="xray-wavelength" name="xray-wavelength" type="number" value="0.496054" min="0.000001" step="any" required>
+
+                <label for="q-min">Q<sub>min</sub> [Å<sup>−1</sup>]</label>
+                <input id="q-min" name="q-min" type="number" value="0.70" min="0" step="any" required>
+
+                <label for="q-max">Q<sub>max</sub> [Å<sup>−1</sup>]</label>
+                <input id="q-max" name="q-max" type="number" value="23" min="0.001" step="any" required>
+              </div>
+            </fieldset>
+
+            <button class="button button-outline" type="submit">計算を実行</button>
+            <p class="calculator-message" id="pdf-q-message" role="alert" hidden></p>
+          </form>
+
+          <dl class="calculator-summary" aria-label="計算概要">
+            <div class="calculator-summary-item">
+              <dt>Q範囲</dt>
+              <dd id="q-range-result">—</dd>
+            </div>
+            <div class="calculator-summary-item">
+              <dt>Δr ≈ π / Q<sub>max</sub></dt>
+              <dd id="real-space-resolution">—</dd>
+            </div>
+            <div class="calculator-summary-item">
+              <dt>代表反射の収録数</dt>
+              <dd id="covered-count">—</dd>
+            </div>
+          </dl>
+
+          <p class="calculator-status" id="pdf-q-status" role="status">—</p>
+
+          <div class="calculator-table-scroll">
+            <table class="calculator-result compact-result">
+              <caption>立方晶の代表的な低角反射（幾何学的位置）</caption>
+              <thead>
+                <tr>
+                  <th scope="col">反射</th>
+                  <th scope="col">d [Å]</th>
+                  <th scope="col">Q [Å<sup>−1</sup>]</th>
+                  <th scope="col">2θ [°]</th>
+                  <th scope="col">判定</th>
+                </tr>
+              </thead>
+              <tbody id="reflection-results"></tbody>
+            </table>
+          </div>
+
+          <section class="calculator-explanation">
+            <h2>使い方</h2>
+            <p>格子定数 a，X線波長 λ，測定するQ範囲を入力してください。初期値は，a = 16.99 ÅのZIF-8と，λ = 0.496054 Åの測定を想定しています。表の「収録」は，反射位置がQ<sub>min</sub>以上かつQ<sub>max</sub>以下にあることを意味します。</p>
+            <p>例えばQ<sub>min</sub> = 0.70 Å<sup>−1</sup>では，ZIF-8の(110)反射は低角側で失われますが，(200)以降の代表反射は収録範囲に入ります。Q<sub>max</sub>を大きくすると，PDFの概算実空間分解能 Δr ≈ π/Q<sub>max</sub>は小さくなります。</p>
+
+            <h2>計算方法と注意</h2>
+            <p class="calculator-formula"><code>d = a / √(h<sup>2</sup> + k<sup>2</sup> + l<sup>2</sup>)</code><br><code>Q = 2π / d</code><br><code>2θ = 2 sin<sup>−1</sup>(λ / 2d)</code><br><code>Δr ≈ π / Q<sub>max</sub></code></p>
+            <p>このページは，立方晶の格子から計算した反射位置だけを示します。構造因子，原子散乱因子，反射強度，装置分解能，検出器の受光効率，バックグラウンドは考慮していません。そのため，「収録」は実測で明瞭なピークが得られることを保証するものではありません。</p>
+            <p>PDFの実際の品質は，Q<sub>min</sub>とQ<sub>max</sub>だけでなく，補正・規格化，バックグラウンド処理，測定時間，統計精度，および高Q側のS/Nにも依存します。PDF解析で用いる規格化関数の定義によって式の表記は異なりますが，このページではQ範囲設計の目安としてΔrを表示しています。</p>
+
+            <h2>関連ページ</h2>
+            <p><a href="resources.html">便利なツール一覧へ戻る</a></p>
+          </section>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <p>段上 翔太郎 / Shotaro Danjo</p>
+      <p><a href="mailto:s.danjo@cheme.kyoto-u.ac.jp">s.danjo@cheme.kyoto-u.ac.jp</a></p>
+      <p>© 2026 Shotaro Danjo</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/main.js"></script>
+  <script>
+    (() => {
+      const REFLECTIONS = [
+        ['110', 1, 1, 0],
+        ['200', 2, 0, 0],
+        ['211', 2, 1, 1],
+        ['220', 2, 2, 0],
+        ['310', 3, 1, 0]
+      ];
+
+      const form = document.getElementById('pdf-q-form');
+      const message = document.getElementById('pdf-q-message');
+      const tableBody = document.getElementById('reflection-results');
+
+      const format = (value, digits = 3) => value.toLocaleString('en-US', {
+        useGrouping: false,
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits
+      });
+
+      const readPositive = (id) => {
+        const value = Number(document.getElementById(id).value);
+        if (!Number.isFinite(value) || value <= 0) {
+          throw new Error('すべての入力値に0より大きい有限の数値を入力してください。');
+        }
+        return value;
+      };
+
+      const readQMin = () => {
+        const value = Number(document.getElementById('q-min').value);
+        if (!Number.isFinite(value) || value < 0) {
+          throw new Error('Qminには0以上の有限の数値を入力してください。');
+        }
+        return value;
+      };
+
+      const setMessage = (text = '') => {
+        message.textContent = text;
+        message.hidden = !text;
+      };
+
+      const calculate = (a, wavelength, qMin, qMax) => {
+        const results = REFLECTIONS.map(([label, h, k, l]) => {
+          const d = a / Math.sqrt(h * h + k * k + l * l);
+          const q = 2 * Math.PI / d;
+          const argument = wavelength / (2 * d);
+          const twoTheta = argument <= 1 ? 2 * Math.asin(argument) * 180 / Math.PI : NaN;
+          let status = '収録';
+          if (q < qMin) status = '低角側で未収録';
+          if (q > qMax) status = '高Q側で未収録';
+          return { label: `(${label})`, d, q, twoTheta, status, covered: q >= qMin && q <= qMax };
+        });
+        return results;
+      };
+
+      const render = () => {
+        setMessage();
+        tableBody.replaceChildren();
+
+        try {
+          const a = readPositive('lattice-constant');
+          const wavelength = readPositive('xray-wavelength');
+          const qMin = readQMin();
+          const qMax = readPositive('q-max');
+          if (qMin >= qMax) throw new Error('QmaxはQminより大きくしてください。');
+
+          const results = calculate(a, wavelength, qMin, qMax);
+          for (const result of results) {
+            const row = document.createElement('tr');
+            const values = [
+              result.label,
+              `${format(result.d, 3)}`,
+              `${format(result.q, 3)}`,
+              Number.isFinite(result.twoTheta) ? format(result.twoTheta, 4) : '—',
+              result.status
+            ];
+            for (const value of values) {
+              const cell = document.createElement('td');
+              cell.textContent = value;
+              row.append(cell);
+            }
+            tableBody.append(row);
+          }
+
+          const covered = results.filter((result) => result.covered).length;
+          document.getElementById('q-range-result').textContent = `${format(qMin, 3)}–${format(qMax, 3)} Å⁻¹`;
+          document.getElementById('real-space-resolution').textContent = `${format(Math.PI / qMax, 4)} Å`;
+          document.getElementById('covered-count').textContent = `${covered} / ${results.length}`;
+
+          const omittedLow = results.filter((result) => result.q < qMin);
+          const omittedHigh = results.filter((result) => result.q > qMax);
+          const messages = [];
+          if (omittedLow.length) messages.push(`${omittedLow.map((result) => result.label).join('，')}は低角側で未収録`);
+          if (omittedHigh.length) messages.push(`${omittedHigh.map((result) => result.label).join('，')}は高Q側で未収録`);
+          document.getElementById('pdf-q-status').textContent = messages.length ? messages.join('。') + '。' : '代表的な低角反射はすべて指定したQ範囲に入っています。';
+        } catch (error) {
+          document.getElementById('q-range-result').textContent = '—';
+          document.getElementById('real-space-resolution').textContent = '—';
+          document.getElementById('covered-count').textContent = '—';
+          document.getElementById('pdf-q-status').textContent = '—';
+          setMessage(error.message);
+        }
+      };
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        render();
+      });
+
+      form.querySelectorAll('input').forEach((input) => input.addEventListener('input', render));
+      render();
+    })();
+  </script>
+</body>
+</html>

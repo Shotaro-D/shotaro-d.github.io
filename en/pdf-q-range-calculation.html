@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-JY6FW28PTB"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-JY6FW28PTB');
+  </script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#fbfbf8" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#141917" media="(prefers-color-scheme: dark)">
+  <meta name="description" content="Check representative Bragg reflections and PDF real-space resolution from the lattice constant and Q range.">
+  <link rel="canonical" href="https://shotaro-d.github.io/en/pdf-q-range-calculation.html">
+  <link rel="alternate" hreflang="ja" href="https://shotaro-d.github.io/pdf-q-range-calculation.html">
+  <link rel="alternate" hreflang="en" href="https://shotaro-d.github.io/en/pdf-q-range-calculation.html">
+  <link rel="alternate" hreflang="x-default" href="https://shotaro-d.github.io/pdf-q-range-calculation.html">
+
+  <title>PDF Q-range design calculator | Shotaro Danjo</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/images/favicon.svg">
+  <link rel="stylesheet" href="../assets/css/style.css">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Shotaro Danjo | 段上翔太郎">
+  <meta property="og:title" content="PDF Q-range design calculator | Shotaro Danjo">
+  <meta property="og:description" content="Check representative Bragg reflections and PDF real-space resolution from the lattice constant and Q range.">
+  <meta property="og:url" content="https://shotaro-d.github.io/en/pdf-q-range-calculation.html">
+  <meta property="og:image" content="https://shotaro-d.github.io/assets/images/face.jpg">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:locale:alternate" content="ja_JP">
+  <meta name="twitter:card" content="summary">
+</head>
+
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="site-name" href="index.html">Shotaro Danjo<small>段上 翔太郎</small></a>
+      <div class="header-actions">
+        <nav id="nav" class="nav" aria-label="Main menu">
+          <a href="index.html">Home</a>
+          <a href="profile.html">Profile</a>
+          <a href="publications.html">Publication</a>
+          <a href="presentations.html">Conference</a>
+          <a href="award.html">Award</a>
+          <a aria-current="page" href="resources.html">Others</a>
+        </nav>
+        <button class="menu-button" type="button" aria-expanded="false" aria-controls="nav">Menu<span class="sr-only">: open navigation</span></button>
+        <nav class="language-switch" aria-label="Language selection">
+          <a lang="ja" hreflang="ja" href="../pdf-q-range-calculation.html">JP</a>
+          <a aria-current="page" lang="en" href="pdf-q-range-calculation.html">EN</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="page-hero compact">
+      <div class="container">
+        <p class="eyebrow">CALCULATOR</p>
+        <h1>PDF Q-range design</h1>
+        <p>Check whether representative low-angle Bragg reflections are covered and estimate the PDF real-space resolution.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container page-grid">
+        <aside class="side-heading">PDF measurement tool</aside>
+        <div class="content">
+          <form id="pdf-q-form" class="calculator-form">
+            <fieldset>
+              <legend>Sample and measurement conditions</legend>
+              <div class="calculator-fields">
+                <label for="lattice-constant">Cubic lattice constant a [Å]</label>
+                <input id="lattice-constant" name="lattice-constant" type="number" value="16.99" min="0.001" step="any" required>
+
+                <label for="xray-wavelength">X-ray wavelength λ [Å]</label>
+                <input id="xray-wavelength" name="xray-wavelength" type="number" value="0.496054" min="0.000001" step="any" required>
+
+                <label for="q-min">Q<sub>min</sub> [Å<sup>−1</sup>]</label>
+                <input id="q-min" name="q-min" type="number" value="0.70" min="0" step="any" required>
+
+                <label for="q-max">Q<sub>max</sub> [Å<sup>−1</sup>]</label>
+                <input id="q-max" name="q-max" type="number" value="23" min="0.001" step="any" required>
+              </div>
+            </fieldset>
+
+            <button class="button button-outline" type="submit">Run calculation</button>
+            <p class="calculator-message" id="pdf-q-message" role="alert" hidden></p>
+          </form>
+
+          <dl class="calculator-summary" aria-label="Calculation summary">
+            <div class="calculator-summary-item">
+              <dt>Q range</dt>
+              <dd id="q-range-result">—</dd>
+            </div>
+            <div class="calculator-summary-item">
+              <dt>Δr ≈ π / Q<sub>max</sub></dt>
+              <dd id="real-space-resolution">—</dd>
+            </div>
+            <div class="calculator-summary-item">
+              <dt>Representative reflections covered</dt>
+              <dd id="covered-count">—</dd>
+            </div>
+          </dl>
+
+          <p class="calculator-status" id="pdf-q-status" role="status">—</p>
+
+          <div class="calculator-table-scroll">
+            <table class="calculator-result compact-result">
+              <caption>Representative low-angle reflections for a cubic lattice (geometric positions)</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Reflection</th>
+                  <th scope="col">d [Å]</th>
+                  <th scope="col">Q [Å<sup>−1</sup>]</th>
+                  <th scope="col">2θ [°]</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody id="reflection-results"></tbody>
+            </table>
+          </div>
+
+          <section class="calculator-explanation">
+            <h2>How to use</h2>
+            <p>Enter the lattice constant a, X-ray wavelength λ, and measured Q range. The default values assume ZIF-8 with a = 16.99 Å and a measurement using λ = 0.496054 Å. “Covered” means that the geometric reflection position lies between Q<sub>min</sub> and Q<sub>max</sub>.</p>
+            <p>For example, with Q<sub>min</sub> = 0.70 Å<sup>−1</sup>, the ZIF-8 (110) reflection is lost on the low-angle side, while the representative reflections from (200) onward remain within the selected range. Increasing Q<sub>max</sub> decreases the approximate real-space resolution Δr ≈ π/Q<sub>max</sub>.</p>
+
+            <h2>Method and limitations</h2>
+            <p class="calculator-formula"><code>d = a / √(h<sup>2</sup> + k<sup>2</sup> + l<sup>2</sup>)</code><br><code>Q = 2π / d</code><br><code>2θ = 2 sin<sup>−1</sup>(λ / 2d)</code><br><code>Δr ≈ π / Q<sub>max</sub></code></p>
+            <p>This page reports geometric reflection positions calculated for a cubic lattice. It does not account for structure factors, atomic scattering factors, reflection intensities, instrumental resolution, detector efficiency, or background. “Covered” therefore does not guarantee that a distinct experimental peak will be observed.</p>
+            <p>Actual PDF quality depends not only on Q<sub>min</sub> and Q<sub>max</sub>, but also on corrections and normalization, background treatment, counting time, statistical precision, and high-Q signal-to-noise. The precise expression used for the PDF normalization can vary; Δr is shown here as a guide for Q-range design.</p>
+
+            <h2>Related page</h2>
+            <p><a href="resources.html">Back to Useful Tools</a></p>
+          </section>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <p>Shotaro Danjo / 段上 翔太郎</p>
+      <p><a href="mailto:s.danjo@cheme.kyoto-u.ac.jp">s.danjo@cheme.kyoto-u.ac.jp</a></p>
+      <p>© 2026 Shotaro Danjo</p>
+    </div>
+  </footer>
+
+  <script src="../assets/js/main.js"></script>
+  <script>
+    (() => {
+      const REFLECTIONS = [
+        ['110', 1, 1, 0],
+        ['200', 2, 0, 0],
+        ['211', 2, 1, 1],
+        ['220', 2, 2, 0],
+        ['310', 3, 1, 0]
+      ];
+
+      const form = document.getElementById('pdf-q-form');
+      const message = document.getElementById('pdf-q-message');
+      const tableBody = document.getElementById('reflection-results');
+
+      const format = (value, digits = 3) => value.toLocaleString('en-US', {
+        useGrouping: false,
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits
+      });
+
+      const readPositive = (id) => {
+        const value = Number(document.getElementById(id).value);
+        if (!Number.isFinite(value) || value <= 0) {
+          throw new Error('Enter a finite value greater than 0 for every field.');
+        }
+        return value;
+      };
+
+      const readQMin = () => {
+        const value = Number(document.getElementById('q-min').value);
+        if (!Number.isFinite(value) || value < 0) {
+          throw new Error('Enter a finite value of 0 or greater for Qmin.');
+        }
+        return value;
+      };
+
+      const setMessage = (text = '') => {
+        message.textContent = text;
+        message.hidden = !text;
+      };
+
+      const calculate = (a, wavelength, qMin, qMax) => {
+        const results = REFLECTIONS.map(([label, h, k, l]) => {
+          const d = a / Math.sqrt(h * h + k * k + l * l);
+          const q = 2 * Math.PI / d;
+          const argument = wavelength / (2 * d);
+          const twoTheta = argument <= 1 ? 2 * Math.asin(argument) * 180 / Math.PI : NaN;
+          let status = 'Covered';
+          if (q < qMin) status = 'Below Qmin';
+          if (q > qMax) status = 'Above Qmax';
+          return { label: `(${label})`, d, q, twoTheta, status, covered: q >= qMin && q <= qMax };
+        });
+        return results;
+      };
+
+      const render = () => {
+        setMessage();
+        tableBody.replaceChildren();
+
+        try {
+          const a = readPositive('lattice-constant');
+          const wavelength = readPositive('xray-wavelength');
+          const qMin = readQMin();
+          const qMax = readPositive('q-max');
+          if (qMin >= qMax) throw new Error('Qmax must be greater than Qmin.');
+
+          const results = calculate(a, wavelength, qMin, qMax);
+          for (const result of results) {
+            const row = document.createElement('tr');
+            const values = [
+              result.label,
+              `${format(result.d, 3)}`,
+              `${format(result.q, 3)}`,
+              Number.isFinite(result.twoTheta) ? format(result.twoTheta, 4) : '—',
+              result.status
+            ];
+            for (const value of values) {
+              const cell = document.createElement('td');
+              cell.textContent = value;
+              row.append(cell);
+            }
+            tableBody.append(row);
+          }
+
+          const covered = results.filter((result) => result.covered).length;
+          document.getElementById('q-range-result').textContent = `${format(qMin, 3)}–${format(qMax, 3)} Å⁻¹`;
+          document.getElementById('real-space-resolution').textContent = `${format(Math.PI / qMax, 4)} Å`;
+          document.getElementById('covered-count').textContent = `${covered} / ${results.length}`;
+
+          const omittedLow = results.filter((result) => result.q < qMin);
+          const omittedHigh = results.filter((result) => result.q > qMax);
+          const messages = [];
+          if (omittedLow.length) messages.push(`${omittedLow.map((result) => result.label).join(', ')} below Qmin`);
+          if (omittedHigh.length) messages.push(`${omittedHigh.map((result) => result.label).join(', ')} above Qmax`);
+          document.getElementById('pdf-q-status').textContent = messages.length ? `${messages.join('; ')}.` : 'All representative low-angle reflections are within the selected Q range.';
+        } catch (error) {
+          document.getElementById('q-range-result').textContent = '—';
+          document.getElementById('real-space-resolution').textContent = '—';
+          document.getElementById('covered-count').textContent = '—';
+          document.getElementById('pdf-q-status').textContent = '—';
+          setMessage(error.message);
+        }
+      };
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        render();
+      });
+
+      form.querySelectorAll('input').forEach((input) => input.addEventListener('input', render));
+      render();
+    })();
+  </script>
+</body>
+</html>

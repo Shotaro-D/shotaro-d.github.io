@@ -32,13 +32,25 @@
   </url>
   <url>
     <loc>https://shotaro-d.github.io/resources.html</loc>
-    <lastmod>2026-08-16</lastmod>
+    <lastmod>2026-08-19</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://shotaro-d.github.io/light-energy-calculation.html</loc>
     <lastmod>2026-08-16</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://shotaro-d.github.io/pdf-q-range-calculation.html</loc>
+    <lastmod>2026-08-19</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://shotaro-d.github.io/subscript-superscript.html</loc>
+    <lastmod>2026-08-19</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.5</priority>
   </url>
@@ -74,7 +86,19 @@
   </url>
   <url>
     <loc>https://shotaro-d.github.io/en/resources.html</loc>
-    <lastmod>2026-07-22</lastmod>
+    <lastmod>2026-08-19</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://shotaro-d.github.io/en/subscript-superscript.html</loc>
+    <lastmod>2026-08-19</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://shotaro-d.github.io/en/pdf-q-range-calculation.html</loc>
+    <lastmod>2026-08-19</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.5</priority>
   </url>
