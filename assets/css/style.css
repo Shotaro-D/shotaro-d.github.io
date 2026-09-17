@@ -18,6 +18,7 @@
   --shadow-soft: 0 12px 32px rgba(24, 48, 43, .08);
   --shadow-lift: 0 14px 28px rgba(14, 65, 56, .16);
   --max: 1000px;
+  --gutter: 20px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -94,7 +95,7 @@ a:hover {
 }
 
 .container {
-  width: min(var(--max), calc(100% - 40px));
+  width: min(var(--max), calc(100% - 2 * var(--gutter)));
   margin: auto;
 }
 
@@ -326,7 +327,12 @@ a:hover {
   display: flex;
   flex-wrap: wrap;
   gap: .7rem;
-  margin: 1.5rem 0 0;
+}
+
+/* 上余白は .section p（詳細度 0,1,1）に負けないよう，同等以上の詳細度で指定する。 */
+.button-row,
+.section .button-row {
+  margin: 2rem 0 0;
 }
 
 .button-row .button {
@@ -335,7 +341,7 @@ a:hover {
 
 .home-grid {
   display: grid;
-  grid-template-columns: 1.15fr .85fr;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr);
   gap: 4rem;
 }
 
@@ -375,7 +381,6 @@ a:hover {
   border-radius: .7rem;
   background: var(--surface);
   font-size: .9rem;
-  transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
 
 .news-list time {
@@ -391,15 +396,17 @@ a:hover {
   margin-top: .7rem;
 }
 
-.news-list li:hover {
-  border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
-  box-shadow: var(--shadow-soft);
-  transform: translateY(-2px);
-}
-
+/* 移動・影などの反応は，カード全体がリンクになっている項目だけに限定する。 */
 .news-post-card {
   cursor: pointer;
   isolation: isolate;
+  transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+.news-post-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-2px);
 }
 
 .news-post-target {
@@ -475,6 +482,7 @@ a:hover {
   color: var(--muted);
   font-size: .72rem;
   line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 .post-links {
@@ -486,12 +494,19 @@ a:hover {
 
 .post-links a {
   font-size: .82rem;
+  overflow-wrap: anywhere;
 }
 
 .page-grid {
   display: grid;
-  grid-template-columns: 210px 1fr;
+  grid-template-columns: 210px minmax(0, 1fr);
   gap: 4rem;
+}
+
+/* グリッド項目は既定で内容幅より縮まないため，長いURL等があっても列幅内に収まるよう明示する。 */
+.home-grid > *,
+.page-grid > * {
+  min-width: 0;
 }
 
 .side-heading {
@@ -509,26 +524,29 @@ a:hover {
   display: block;
   width: 100%;
   max-width: 160px;
+  height: auto;
   aspect-ratio: 4 / 5;
   object-fit: cover;
   border-radius: 4px;
   margin-bottom: 1.25rem;
 }
 
-.content h2 {
+/* 本文用の共通タイポグラフィ。投稿カード（.post-entry）は独自設計のため適用範囲から外す。
+   :where() は詳細度 0 のため，除外を加えても他ページの詳細度関係は変わらない。 */
+.content h2:not(:where(.post-entry *)) {
   margin: 0 0 1.15rem;
 }
 
-.content h2:not(:first-child) {
+.content h2:not(:first-child):not(:where(.post-entry *)) {
   margin-top: 3rem;
 }
 
-.content h3 {
+.content h3:not(:where(.post-entry *)) {
   margin: 1.6rem 0 .35rem;
 }
 
-.content p,
-.content li {
+.content p:not(:where(.post-entry *)),
+.content li:not(:where(.post-entry *)) {
   font-size: .92rem;
 }
 
@@ -573,7 +591,8 @@ a:hover {
 .publication,
 .timeline li,
 .award-list li,
-.link-list li {
+.link-list li,
+.post-entry {
   scroll-margin-top: 6rem;
 }
 
@@ -613,6 +632,7 @@ a:hover {
 
 .publication a {
   font-size: .8rem;
+  overflow-wrap: anywhere;
 }
 
 .cover-art {
@@ -633,6 +653,7 @@ a:hover {
   color: var(--muted);
   font-size: .72rem;
   line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 .content h2.presentation-year {
@@ -947,6 +968,7 @@ a:hover {
   display: block;
   padding: 1.1rem 0;
   text-decoration: none;
+  overflow-wrap: anywhere;
 }
 
 .link-list strong {
@@ -1000,11 +1022,14 @@ a:hover {
     position: absolute;
     z-index: 3;
     top: 68px;
-    left: -20px;
-    right: -20px;
-    padding: 1rem 20px 1.3rem;
-    background: var(--header-bg);
-    backdrop-filter: blur(18px) saturate(150%);
+    left: calc(-1 * var(--gutter));
+    right: calc(-1 * var(--gutter));
+    max-height: calc(100vh - 68px);
+    max-height: calc(100dvh - 68px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 1rem var(--gutter) 1.3rem;
+    background: var(--paper);
     box-shadow: 0 14px 24px rgba(24, 48, 43, .1);
     border-bottom: 1px solid var(--line);
     flex-direction: column;
@@ -1027,7 +1052,7 @@ a:hover {
 
   .home-grid,
   .page-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 2.4rem;
   }
 
@@ -1075,14 +1100,13 @@ a:hover {
   }
 
   .button:hover,
-  .news-list li:hover {
+  .news-post-card:hover {
     transform: none;
   }
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  .site-header,
-  .nav {
+  .site-header {
     background: var(--paper);
     backdrop-filter: none;
   }
@@ -1102,8 +1126,8 @@ a:hover {
 }
 
 @media (max-width: 420px) {
-  .container {
-    width: min(100% - 30px, var(--max));
+  :root {
+    --gutter: 15px;
   }
 
   .timeline li,
