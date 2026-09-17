@@ -29,13 +29,18 @@
   <meta property="og:title" content="光子エネルギーと波長の変換 | 段上翔太郎">
   <meta property="og:description" content="波長と光子エネルギーを相互変換する計算ツール">
   <meta property="og:url" content="https://shotaro-d.github.io/light-energy-calculation.html">
-  <meta property="og:image" content="https://shotaro-d.github.io/assets/images/face.jpg">
+  <meta property="og:image" content="https://shotaro-d.github.io/assets/images/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="段上翔太郎（京都大学 化学工学専攻）：放射光 in situ 時分割X線回折によるナノ粒子・MOF粒子の形成機構研究">
   <meta property="og:locale" content="ja_JP">
   <meta property="og:locale:alternate" content="en_US">
-  <meta name="twitter:card" content="summary">
+  <meta name="twitter:card" content="summary_large_image">
 </head>
 
 <body>
+  <a class="skip-link" href="#main">本文へ移動</a>
+
   <header class="site-header">
     <div class="container header-inner">
       <a class="site-name" href="index.html">段上 翔太郎<small>Shotaro Danjo</small></a>
@@ -59,7 +64,7 @@
     </div>
   </header>
 
-  <main>
+  <main id="main" tabindex="-1">
     <section class="page-hero compact">
       <div class="container">
         <p class="eyebrow">CALCULATOR</p>
@@ -130,7 +135,7 @@
                 <p class="calculator-message" id="wavelength-message" role="alert" hidden></p>
               </form>
 
-              <table class="calculator-result">
+              <table class="calculator-result" id="wavelength-result-table">
                 <caption>計算結果</caption>
                 <thead>
                   <tr>
@@ -145,6 +150,12 @@
                   </tr>
                 </tbody>
               </table>
+
+              <div class="copy-actions">
+                <button class="copy-button" type="button" data-copy-text="wavelength-output-result" data-copy-status="wavelength-copy-status">出力値をコピー</button>
+                <button class="copy-button" type="button" data-copy-table="wavelength-result-table" data-copy-status="wavelength-copy-status">表をコピー</button>
+                <span class="copy-feedback" id="wavelength-copy-status" role="status" aria-live="polite"></span>
+              </div>
 
               <p class="calculator-rounding-warning" id="wavelength-rounding-warning" role="status" hidden>計算結果は正の値ですが，指定した小数点以下の桁数では0に丸められています。桁数を増やしてください。</p>
             </article>
@@ -204,7 +215,7 @@
                 <p class="calculator-message" id="energy-message" role="alert" hidden></p>
               </form>
 
-              <table class="calculator-result">
+              <table class="calculator-result" id="energy-result-table">
                 <caption>計算結果</caption>
                 <thead>
                   <tr>
@@ -219,6 +230,12 @@
                   </tr>
                 </tbody>
               </table>
+
+              <div class="copy-actions">
+                <button class="copy-button" type="button" data-copy-text="energy-output-result" data-copy-status="energy-copy-status">出力値をコピー</button>
+                <button class="copy-button" type="button" data-copy-table="energy-result-table" data-copy-status="energy-copy-status">表をコピー</button>
+                <span class="copy-feedback" id="energy-copy-status" role="status" aria-live="polite"></span>
+              </div>
 
               <p class="calculator-rounding-warning" id="energy-rounding-warning" role="status" hidden>計算結果は正の値ですが，指定した小数点以下の桁数では0に丸められています。桁数を増やしてください。</p>
             </article>

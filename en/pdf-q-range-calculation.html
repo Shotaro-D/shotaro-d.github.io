@@ -28,13 +28,18 @@
   <meta property="og:title" content="PDF Q-range design calculator | Shotaro Danjo">
   <meta property="og:description" content="Check representative Bragg reflections and PDF real-space resolution from the lattice constant and Q range.">
   <meta property="og:url" content="https://shotaro-d.github.io/en/pdf-q-range-calculation.html">
-  <meta property="og:image" content="https://shotaro-d.github.io/assets/images/face.jpg">
+  <meta property="og:image" content="https://shotaro-d.github.io/assets/images/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Shotaro Danjo (Chemical Engineering, Kyoto University): research on nanoparticle and MOF formation mechanisms using in situ time-resolved X-ray diffraction">
   <meta property="og:locale" content="en_US">
   <meta property="og:locale:alternate" content="ja_JP">
-  <meta name="twitter:card" content="summary">
+  <meta name="twitter:card" content="summary_large_image">
 </head>
 
 <body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
   <header class="site-header">
     <div class="container header-inner">
       <a class="site-name" href="index.html">Shotaro Danjo<small>段上 翔太郎</small></a>
@@ -56,7 +61,7 @@
     </div>
   </header>
 
-  <main>
+  <main id="main" tabindex="-1">
     <section class="page-hero compact">
       <div class="container">
         <p class="eyebrow">CALCULATOR</p>
@@ -109,19 +114,25 @@
           <p class="calculator-status" id="pdf-q-status" role="status">—</p>
 
           <div class="calculator-table-scroll">
-            <table class="calculator-result compact-result">
+            <table class="calculator-result compact-result" id="reflection-table">
               <caption>Representative low-angle reflections for a cubic lattice (geometric positions)</caption>
               <thead>
                 <tr>
                   <th scope="col">Reflection</th>
                   <th scope="col">d [Å]</th>
-                  <th scope="col">Q [Å<sup>−1</sup>]</th>
+                  <th scope="col" data-copy-label="Q [Å⁻¹]">Q [Å<sup>−1</sup>]</th>
                   <th scope="col">2θ [°]</th>
                   <th scope="col">Status</th>
                 </tr>
               </thead>
               <tbody id="reflection-results"></tbody>
             </table>
+          </div>
+
+          <div class="copy-actions">
+            <button class="copy-button" type="button" data-copy-text="real-space-resolution" data-copy-status="pdf-q-copy-status">Copy Δr</button>
+            <button class="copy-button" type="button" data-copy-table="reflection-table" data-copy-status="pdf-q-copy-status">Copy table</button>
+            <span class="copy-feedback" id="pdf-q-copy-status" role="status" aria-live="polite"></span>
           </div>
 
           <section class="calculator-explanation">
