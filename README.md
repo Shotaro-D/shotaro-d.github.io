@@ -22,7 +22,7 @@ Commit and push to `main` — GitHub Pages redeploys automatically. When adding 
 
 ## Testing the photon energy calculator
 
-The calculator has dependency-free regression tests for the live JavaScript behavior and an independent high-precision reference calculation:
+The calculator has dependency-free regression tests for the live JavaScript behavior and an independent high-precision reference calculation, run against both the Japanese and the English page:
 
 ```sh
 node tests/light-energy-calculation.test.mjs

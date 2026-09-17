@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-JY6FW28PTB"></script>
@@ -14,33 +14,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#fbfbf8" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#141917" media="(prefers-color-scheme: dark)">
-  <meta name="description" content="波長と光子エネルギーを相互変換する計算ツール">
-  <link rel="canonical" href="https://shotaro-d.github.io/light-energy-calculation.html">
+  <meta name="description" content="Calculator for converting between photon energy and wavelength">
+  <link rel="canonical" href="https://shotaro-d.github.io/en/light-energy-calculation.html">
   <link rel="alternate" hreflang="ja" href="https://shotaro-d.github.io/light-energy-calculation.html">
   <link rel="alternate" hreflang="en" href="https://shotaro-d.github.io/en/light-energy-calculation.html">
   <link rel="alternate" hreflang="x-default" href="https://shotaro-d.github.io/light-energy-calculation.html">
 
-  <title>光子エネルギーと波長の変換 | 段上翔太郎</title>
-  <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
-  <link rel="stylesheet" href="assets/css/style.css">
+  <title>Photon energy–wavelength conversion | Shotaro Danjo</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/images/favicon.svg">
+  <link rel="stylesheet" href="../assets/css/style.css">
 
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="段上翔太郎 | Shotaro Danjo">
-  <meta property="og:title" content="光子エネルギーと波長の変換 | 段上翔太郎">
-  <meta property="og:description" content="波長と光子エネルギーを相互変換する計算ツール">
-  <meta property="og:url" content="https://shotaro-d.github.io/light-energy-calculation.html">
+  <meta property="og:site_name" content="Shotaro Danjo | 段上翔太郎">
+  <meta property="og:title" content="Photon energy–wavelength conversion | Shotaro Danjo">
+  <meta property="og:description" content="Calculator for converting between photon energy and wavelength">
+  <meta property="og:url" content="https://shotaro-d.github.io/en/light-energy-calculation.html">
   <meta property="og:image" content="https://shotaro-d.github.io/assets/images/face.jpg">
-  <meta property="og:locale" content="ja_JP">
-  <meta property="og:locale:alternate" content="en_US">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:locale:alternate" content="ja_JP">
   <meta name="twitter:card" content="summary">
 </head>
 
 <body>
   <header class="site-header">
     <div class="container header-inner">
-      <a class="site-name" href="index.html">段上 翔太郎<small>Shotaro Danjo</small></a>
+      <a class="site-name" href="index.html">Shotaro Danjo<small>段上 翔太郎</small></a>
       <div class="header-actions">
-        <nav id="nav" class="nav" aria-label="メインメニュー">
+        <nav id="nav" class="nav" aria-label="Main menu">
           <a href="index.html">Home</a>
           <a href="profile.html">Profile</a>
           <a href="publications.html">Publication</a>
@@ -49,11 +49,11 @@
           <a aria-current="page" href="resources.html">Others</a>
         </nav>
 
-        <button class="menu-button" type="button" aria-expanded="false" aria-controls="nav">メニュー<span class="sr-only">を開く</span></button>
+        <button class="menu-button" type="button" aria-expanded="false" aria-controls="nav">Menu<span class="sr-only">: open navigation</span></button>
 
-        <nav class="language-switch" aria-label="言語選択">
-          <a aria-current="page" lang="ja" href="light-energy-calculation.html">JP</a>
-          <a lang="en" hreflang="en" href="en/light-energy-calculation.html">EN</a>
+        <nav class="language-switch" aria-label="Language selection">
+          <a lang="ja" hreflang="ja" href="../light-energy-calculation.html">JP</a>
+          <a aria-current="page" lang="en" href="light-energy-calculation.html">EN</a>
         </nav>
       </div>
     </div>
@@ -64,30 +64,30 @@
       <div class="container">
         <p class="eyebrow">CALCULATOR</p>
 
-        <h1>光子エネルギーと波長の変換</h1>
+        <h1>Photon energy–wavelength conversion</h1>
 
-        <p>波長と光子エネルギーを相互に変換する計算ツールです。</p>
+        <p>Convert between wavelength and photon energy.</p>
       </div>
     </section>
 
     <section class="section">
       <div class="container page-grid">
-        <aside class="side-heading">光学計算ツール</aside>
+        <aside class="side-heading">Optics calculation tool</aside>
 
         <div class="content">
           <div class="calculator-grid">
             <article class="calculator-card">
-              <h2>Ⅰ．波長を光子エネルギーに変換</h2>
+              <h2>I. Wavelength to photon energy</h2>
 
               <form id="wavelength-form" class="calculator-form">
                 <fieldset>
-                  <legend>入力値の設定</legend>
+                  <legend>Input</legend>
 
                   <div class="calculator-fields">
-                    <label for="wavelength-value">波長</label>
+                    <label for="wavelength-value">Wavelength</label>
                     <input id="wavelength-value" name="wavelength" type="number" value="550" min="0" step="any" required>
 
-                    <label for="wavelength-unit">単位</label>
+                    <label for="wavelength-unit">Unit</label>
                     <select id="wavelength-unit" name="wavelength-unit">
                       <option value="1e-12">pm</option>
                       <option value="1e-10" selected>Å</option>
@@ -103,10 +103,10 @@
                 </fieldset>
 
                 <fieldset>
-                  <legend>出力値の設定</legend>
+                  <legend>Output</legend>
 
                   <div class="calculator-fields">
-                    <label for="wavelength-output-unit">出力するエネルギーの単位</label>
+                    <label for="wavelength-output-unit">Energy unit for output</label>
                     <select id="wavelength-output-unit" name="energy-unit">
                       <option value="1e-15">feV</option>
                       <option value="1e-12">peV</option>
@@ -120,22 +120,22 @@
                       <option value="J">J</option>
                     </select>
 
-                    <label for="wavelength-digits">出力値の小数点以下の桁数</label>
+                    <label for="wavelength-digits">Decimal places in output</label>
                     <input id="wavelength-digits" name="digits" type="number" value="5" min="0" max="100" step="1" required>
                   </div>
 
                 </fieldset>
 
-                <button class="button button-outline" type="submit">波長から光子エネルギーに変換実行</button>
+                <button class="button button-outline" type="submit">Convert wavelength to photon energy</button>
                 <p class="calculator-message" id="wavelength-message" role="alert" hidden></p>
               </form>
 
               <table class="calculator-result">
-                <caption>計算結果</caption>
+                <caption>Result</caption>
                 <thead>
                   <tr>
-                    <th scope="col">入力値（波長）</th>
-                    <th scope="col">出力値（エネルギー）</th>
+                    <th scope="col">Input (wavelength)</th>
+                    <th scope="col">Output (energy)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -146,21 +146,21 @@
                 </tbody>
               </table>
 
-              <p class="calculator-rounding-warning" id="wavelength-rounding-warning" role="status" hidden>計算結果は正の値ですが，指定した小数点以下の桁数では0に丸められています。桁数を増やしてください。</p>
+              <p class="calculator-rounding-warning" id="wavelength-rounding-warning" role="status" hidden>The result is positive but rounds to 0 at the specified number of decimal places. Increase the number of decimal places.</p>
             </article>
 
             <article class="calculator-card">
-              <h2>Ⅱ．光子エネルギーを波長に変換</h2>
+              <h2>II. Photon energy to wavelength</h2>
 
               <form id="energy-form" class="calculator-form">
                 <fieldset>
-                  <legend>入力値の設定</legend>
+                  <legend>Input</legend>
 
                   <div class="calculator-fields">
-                    <label for="energy-value">光子エネルギー</label>
+                    <label for="energy-value">Photon energy</label>
                     <input id="energy-value" name="energy" type="number" value="35" min="0" step="any" required>
 
-                    <label for="energy-unit">単位</label>
+                    <label for="energy-unit">Unit</label>
                     <select id="energy-unit" name="energy-unit">
                       <option value="1e-15">feV</option>
                       <option value="1e-12">peV</option>
@@ -178,10 +178,10 @@
                 </fieldset>
 
                 <fieldset>
-                  <legend>出力値の設定</legend>
+                  <legend>Output</legend>
 
                   <div class="calculator-fields">
-                    <label for="energy-output-unit">出力する波長の単位</label>
+                    <label for="energy-output-unit">Wavelength unit for output</label>
                     <select id="energy-output-unit" name="wavelength-unit">
                       <option value="1e-12">pm</option>
                       <option value="1e-10" selected>Å</option>
@@ -194,22 +194,22 @@
                       <option value="1e6">Mm</option>
                     </select>
 
-                    <label for="energy-digits">出力値の小数点以下の桁数</label>
+                    <label for="energy-digits">Decimal places in output</label>
                     <input id="energy-digits" name="digits" type="number" value="5" min="0" max="100" step="1" required>
                   </div>
 
                 </fieldset>
 
-                <button class="button button-outline" type="submit">光子エネルギーから波長に変換実行</button>
+                <button class="button button-outline" type="submit">Convert photon energy to wavelength</button>
                 <p class="calculator-message" id="energy-message" role="alert" hidden></p>
               </form>
 
               <table class="calculator-result">
-                <caption>計算結果</caption>
+                <caption>Result</caption>
                 <thead>
                   <tr>
-                    <th scope="col">入力値（エネルギー）</th>
-                    <th scope="col">出力値（波長）</th>
+                    <th scope="col">Input (energy)</th>
+                    <th scope="col">Output (wavelength)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -220,30 +220,30 @@
                 </tbody>
               </table>
 
-              <p class="calculator-rounding-warning" id="energy-rounding-warning" role="status" hidden>計算結果は正の値ですが，指定した小数点以下の桁数では0に丸められています。桁数を増やしてください。</p>
+              <p class="calculator-rounding-warning" id="energy-rounding-warning" role="status" hidden>The result is positive but rounds to 0 at the specified number of decimal places. Increase the number of decimal places.</p>
             </article>
           </div>
 
           <section class="calculator-explanation">
-            <h2>計算ツールの説明</h2>
+            <h2>About this calculator</h2>
 
-            <p>入力値と出力値の単位をプルダウンから選択できます。例えば，波長550 nmを入力する場合は，単位を「nm」に設定し，波長に「550」と入力してください。</p>
+            <p>You can choose the input and output units from the dropdown menus. For example, to enter a wavelength of 550 nm, set the unit to “nm” and enter “550” for the wavelength.</p>
 
-            <p>光子エネルギーの入力単位「×10^(-19) [J]」では，10<sup>−19</sup> Jを省略して入力できます。例えば，3.972 × 10<sup>−19</sup> Jは，単位を「×10^(-19) [J]」に設定し，入力値を「3.972」としてください。</p>
+            <p>The photon energy input unit “×10^(-19) [J]” lets you omit the 10<sup>−19</sup> J factor when entering a value. For example, to enter 3.972 × 10<sup>−19</sup> J, set the unit to “×10^(-19) [J]” and enter “3.972” as the input value.</p>
 
-            <p>出力値は小数表示で示します。出力値の小数点以下の桁数を指定できます。正の計算結果が指定した桁数によってゼロに丸められる場合は，結果の下に警告を表示します。</p>
+            <p>Output values are shown in decimal notation. You can specify the number of decimal places in the output. If a positive result rounds to zero at the specified number of decimal places, a warning is displayed below the result.</p>
 
-            <p>この計算での波長 λ は真空中の波長である。媒質中の波長を用いる場合は，屈折率を考慮して真空波長に換算してから入力してください。</p>
+            <p>The wavelength λ used in this calculation is the vacuum wavelength. If you are working with a wavelength in a medium, convert it to the vacuum wavelength using the refractive index before entering it.</p>
 
-            <h2>計算方法</h2>
+            <h2>Method</h2>
 
             <p class="calculator-formula"><code>E = hc / λ</code></p>
 
-            <p>ここで，真空中の光速は <code>c = 2.99792458 × 10<sup>8</sup> m/s</code>，プランク定数は <code>h = 6.62607015 × 10<sup>−34</sup> J・s</code>，換算には <code>1 eV = 1.602176634 × 10<sup>−19</sup> J</code> を用いています。</p>
+            <p>Here, the speed of light in vacuum is <code>c = 2.99792458 × 10<sup>8</sup> m/s</code>, the Planck constant is <code>h = 6.62607015 × 10<sup>−34</sup> J·s</code>, and the conversion uses <code>1 eV = 1.602176634 × 10<sup>−19</sup> J</code>.</p>
 
-            <h2>定数の出典</h2>
+            <h2>Sources of constants</h2>
 
-            <p>真空中の光速 <code>c</code>，プランク定数 <code>h</code>，および電気素量 <code>e</code> は，SIを定義する厳密な値としてNISTの資料に基づいています。</p>
+            <p>The speed of light in vacuum <code>c</code>, the Planck constant <code>h</code>, and the elementary charge <code>e</code> are based on NIST documentation, as exact values that define the SI.</p>
 
             <ul>
               <li><a href="https://www.nist.gov/pml/special-publication-330/sp-330-section-2" target="_blank" rel="noopener noreferrer">NIST SP 330, Section 2: The International System of Units (SI)</a></li>
@@ -251,7 +251,7 @@
               <li>Mohr, P. J.; Newell, D. B.; Taylor, B. N.; Tiesinga, E., “CODATA recommended values of the fundamental physical constants: 2022,” <i>Rev. Mod. Phys.</i> <b>97</b>, 025002 (2025). <a href="https://doi.org/10.1103/RevModPhys.97.025002" target="_blank" rel="noopener noreferrer">DOI: 10.1103/RevModPhys.97.025002</a></li>
             </ul>
 
-            <p><a href="resources.html">便利なツール一覧へ戻る</a></p>
+            <p><a href="resources.html">Back to Useful Tools</a></p>
           </section>
         </div>
       </div>
@@ -260,7 +260,7 @@
 
   <footer class="footer">
     <div class="container footer-inner">
-      <p>段上 翔太郎 / Shotaro Danjo</p>
+      <p>Shotaro Danjo / 段上 翔太郎</p>
 
       <p><a href="mailto:s.danjo@cheme.kyoto-u.ac.jp">s.danjo@cheme.kyoto-u.ac.jp</a></p>
 
@@ -268,7 +268,7 @@
     </div>
   </footer>
 
-  <script src="assets/js/main.js"></script>
+  <script src="../assets/js/main.js"></script>
   <script>
     (() => {
       const LIGHT_SPEED_M_S = 299792458;
@@ -282,7 +282,7 @@
 
       const formatValue = (value, digits) => {
         if (!Number.isFinite(value)) {
-          throw new Error('計算結果が数値の範囲を超えました。入力値または単位を確認してください。');
+          throw new Error('The result is outside the representable numeric range. Check the input value and units.');
         }
         return value.toLocaleString('en-US', {
           useGrouping: false,
@@ -293,7 +293,7 @@
 
       const requireFinitePositive = (value) => {
         if (!Number.isFinite(value) || value <= 0) {
-          throw new Error('計算結果が数値の範囲を超えました。入力値または単位を確認してください。');
+          throw new Error('The result is outside the representable numeric range. Check the input value and units.');
         }
         return value;
       };
@@ -301,7 +301,7 @@
       const readPositiveNumber = (input) => {
         const value = Number(input.value);
         if (!Number.isFinite(value) || value <= 0) {
-          throw new Error('0より大きい有限の数値を入力してください。');
+          throw new Error('Enter a finite number greater than 0.');
         }
         return value;
       };
@@ -309,7 +309,7 @@
       const readDigits = (input) => {
         const rawValue = input.value.trim();
         if (!/^(?:0|[1-9]\d?|100)$/.test(rawValue)) {
-          throw new Error('小数点以下の桁数は0から100までの整数で指定してください。');
+          throw new Error('Specify the number of decimal places as an integer from 0 to 100.');
         }
         return Number(rawValue);
       };
