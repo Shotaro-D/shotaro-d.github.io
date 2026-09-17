@@ -6,6 +6,7 @@
   --muted: #5d6e6a;
   --paper: #fcfcfa;
   --line: #d9e1de;
+  --field-border: #7a8b86;
   --accent: #176b60;
   --accent-dark: #10483f;
   --pale: #eef4f1;
@@ -27,6 +28,7 @@
     --muted: #9baca6;
     --paper: #121917;
     --line: #33423d;
+    --field-border: #6b7f78;
     --accent: #66cdb4;
     --accent-dark: #a0ecd8;
     --pale: #1b2824;
@@ -55,7 +57,7 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic Medium", "Yu Gothic", Meiryo, sans-serif;
-  font-size: clamp(15px, .94rem + .08vw, 16px);
+  font-size: clamp(.9375rem, .94rem + .08vw, 1rem);
   line-height: 1.82;
   text-rendering: optimizeLegibility;
 }
@@ -167,9 +169,21 @@ a:hover {
 
 .menu-button {
   display: none;
-  background: transparent;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 .6rem;
   border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
   font: inherit;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.menu-button:hover,
+.menu-button[aria-expanded="true"] {
+  background: var(--pale);
 }
 
 .language-switch {
@@ -179,19 +193,35 @@ a:hover {
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--surface);
-  font-size: .68rem;
+  font-size: .72rem;
   font-weight: 700;
   line-height: 1;
   letter-spacing: .025em;
 }
 
 .language-switch a {
-  min-width: 2rem;
-  padding: .4rem .42rem;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 1.9rem;
+  padding: .3rem .5rem;
   border-radius: 999px;
   color: var(--muted);
   text-align: center;
   text-decoration: none;
+}
+
+/* 操作領域は文字サイズ設定に関係なく44px（CSSピクセル）を確保する。 */
+.language-switch a::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 44px;
+  transform: translateY(-50%);
 }
 
 .language-switch a:hover {
@@ -216,6 +246,37 @@ a:hover {
   overflow: hidden;
   white-space: nowrap;
   width: 1px;
+}
+
+/* キーボード操作時だけ表示する「本文へ移動」リンク。 */
+.skip-link {
+  position: absolute;
+  top: .6rem;
+  left: .6rem;
+  z-index: 100;
+  padding: .7rem 1.05rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--button-text);
+  font-size: .82rem;
+  font-weight: 700;
+  line-height: 1.4;
+  text-decoration: none;
+  transform: translateY(calc(-100% - 1rem));
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+.skip-link:hover {
+  background: var(--accent-dark);
+  color: var(--button-text);
+}
+
+/* スキップ先の main は操作対象ではないため枠を出さない（リンク・ボタン等のフォーカス枠は従来どおり）。 */
+#main:focus {
+  outline: none;
 }
 
 /* Hero */
@@ -431,11 +492,16 @@ a:hover {
   gap: 1.25rem;
 }
 
+.post-list > * {
+  min-width: 0;
+}
+
 .post-entry {
   padding: clamp(1.25rem, 3vw, 2rem);
   border: 1px solid var(--line);
   border-radius: .8rem;
   background: var(--surface);
+  overflow-wrap: break-word;
 }
 
 .post-type,
@@ -529,6 +595,11 @@ a:hover {
   object-fit: cover;
   border-radius: 4px;
   margin-bottom: 1.25rem;
+}
+
+/* 長いURLやDOIが列幅を超える場合は折り返す。 */
+.content {
+  overflow-wrap: break-word;
 }
 
 /* 本文用の共通タイポグラフィ。投稿カード（.post-entry）は独自設計のため適用範囲から外す。
@@ -719,7 +790,7 @@ a:hover {
   width: 100%;
   min-width: 0;
   padding: .4rem .45rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--field-border);
   border-radius: .25rem;
   background: var(--paper);
   color: var(--ink);
@@ -939,6 +1010,41 @@ a:hover {
   font-weight: 700;
 }
 
+/* 計算結果のコピー操作。境界は入力欄と同じく識別できる濃さにする。 */
+.copy-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem .6rem;
+  margin-top: .8rem;
+}
+
+.copy-button {
+  min-height: 44px;
+  padding: .45rem 1rem;
+  border: 1px solid var(--field-border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--accent);
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 700;
+  line-height: 1.3;
+  cursor: pointer;
+  transition: border-color .18s ease, background-color .18s ease;
+}
+
+.copy-button:hover {
+  border-color: var(--accent);
+  background: var(--pale);
+}
+
+.copy-feedback {
+  color: var(--accent);
+  font-size: .78rem;
+  font-weight: 700;
+}
+
 .award-list li {
   display: grid;
   grid-template-columns: 120px 1fr;
@@ -1002,17 +1108,23 @@ a:hover {
 /* Responsive */
 
 @media (max-width: 780px) {
+  /* 文字を大きく設定したときは，言語切替などを次の行へ折り返す。 */
   .header-inner {
     position: relative;
     min-height: 70px;
+    flex-wrap: wrap;
+    gap: .25rem 1rem;
   }
 
   .header-actions {
+    margin-left: auto;
     gap: .35rem;
   }
 
   .menu-button {
-    display: block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     color: var(--ink);
     font-size: .8rem;
   }
@@ -1021,7 +1133,7 @@ a:hover {
     display: none;
     position: absolute;
     z-index: 3;
-    top: 68px;
+    top: 100%;
     left: calc(-1 * var(--gutter));
     right: calc(-1 * var(--gutter));
     max-height: calc(100vh - 68px);
@@ -1034,7 +1146,7 @@ a:hover {
     border-bottom: 1px solid var(--line);
     flex-direction: column;
     align-items: flex-start;
-    gap: .8rem;
+    gap: .25rem;
   }
 
   .nav.is-open {
@@ -1044,6 +1156,9 @@ a:hover {
   .nav a {
     width: 100%;
     padding: .5rem .65rem;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
   }
 
   .page-hero {
@@ -1144,18 +1259,53 @@ a:hover {
   }
 
   .language-switch a {
-    min-width: 1.8rem;
     padding-inline: .34rem;
+  }
+}
+
+/* 横向きタブレットなど，タッチ操作で横並びナビが表示される場合も操作領域を確保する。 */
+@media (pointer: coarse) and (min-width: 781px) {
+  .nav a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
   }
 }
 
 /* Print */
 
+@page {
+  margin: 16mm 14mm;
+}
+
 @media print {
+  /* 画面のダークモード設定に関係なく，白地・黒文字で印刷する。 */
+  :root {
+    color-scheme: light;
+    --ink: #000;
+    --muted: #444;
+    --paper: #fff;
+    --line: #999;
+    --field-border: #666;
+    --accent: #000;
+    --accent-dark: #000;
+    --pale: #fff;
+    --header-bg: #fff;
+    --hero-text: #222;
+    --underline: #000;
+    --selection-bg: #ddd;
+    --button-text: #fff;
+    --surface: transparent;
+    --shadow-soft: none;
+    --shadow-lift: none;
+  }
+
+  .skip-link,
   .site-header,
   .menu-button,
   .language-switch,
-  .button {
+  .button,
+  .copy-actions {
     display: none;
   }
 
@@ -1171,5 +1321,81 @@ a:hover {
 
   .page-hero {
     padding: 1.5rem 0;
+    background: none;
+  }
+
+  .section {
+    padding: 1.5rem 0;
+  }
+
+  .footer {
+    background: none;
+  }
+
+  .news-post-card,
+  .post-media img,
+  .cover-art img {
+    box-shadow: none;
+    transform: none;
+  }
+
+  /* 紙面では図を小さくし，論文情報と図を同じページに収めやすくする。 */
+  .post-media {
+    width: 120mm;
+  }
+
+  .cover-art,
+  .post-cover {
+    width: 55mm;
+  }
+
+  .content .publication-year {
+    display: block;
+    width: fit-content;
+  }
+
+  /* 論文情報・発表・受賞などの項目の途中で改ページしない。 */
+  .publication,
+  .timeline li,
+  .award-list li,
+  .news-list li,
+  .presentation-list li,
+  .link-list li,
+  .calculator-card,
+  .calculator-summary-item,
+  .symbol-group,
+  figure,
+  tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* 投稿は図を含めると1ページを超えるため，枠を外して項目の途中での改ページを許す。 */
+  .post-entry {
+    padding: 1rem 0 0;
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+  }
+
+  .post-entry h2,
+  .post-date {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  h1,
+  h2,
+  h3,
+  .publication-year,
+  .side-heading {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  p,
+  li {
+    orphans: 3;
+    widows: 3;
   }
 }

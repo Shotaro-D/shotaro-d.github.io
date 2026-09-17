@@ -29,6 +29,21 @@ node tests/light-energy-calculation.test.mjs
 python3 tests/test_light_energy_reference.py
 ```
 
+## Site consistency checks
+
+Checks the skip link, Open Graph tags, and that dates on the Japanese and English home and awards pages agree:
+
+```sh
+node tests/site-consistency.test.mjs
+```
+
 ## Updating content
 
-Each page is a standalone HTML file. Publications, presentations, awards, and useful X-ray tools can each be edited without touching the layout code.
+Each page is a standalone HTML file. Publications, presentations, awards, and useful X-ray tools can each be edited without touching the layout code. See [`tools/og-image/README.md`](tools/og-image/README.md) for how to regenerate the OGP share image.
+
+### Consistency checklist
+
+- Update the Japanese page and its `en/` counterpart in the same commit.
+- Give every `<time>` in the news list and the awards list a machine-readable `datetime` (`YYYY-MM` or `YYYY-MM-DD`), and keep the same value on both language versions.
+- Conference awards are dated by the month the conference was held (not the month the result was announced), so the home page news and `award.html` show the same month.
+- Grants are listed by selection date on the home page and by funding period on the profile page.

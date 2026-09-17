@@ -28,13 +28,18 @@
   <meta property="og:title" content="PDF測定Q範囲の設計 | 段上翔太郎">
   <meta property="og:description" content="格子定数とQ範囲からPDF測定での主要反射の収録可否を確認する計算ツール">
   <meta property="og:url" content="https://shotaro-d.github.io/pdf-q-range-calculation.html">
-  <meta property="og:image" content="https://shotaro-d.github.io/assets/images/face.jpg">
+  <meta property="og:image" content="https://shotaro-d.github.io/assets/images/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="段上翔太郎（京都大学 化学工学専攻）：放射光 in situ 時分割X線回折によるナノ粒子・MOF粒子の形成機構研究">
   <meta property="og:locale" content="ja_JP">
   <meta property="og:locale:alternate" content="en_US">
-  <meta name="twitter:card" content="summary">
+  <meta name="twitter:card" content="summary_large_image">
 </head>
 
 <body>
+  <a class="skip-link" href="#main">本文へ移動</a>
+
   <header class="site-header">
     <div class="container header-inner">
       <a class="site-name" href="index.html">段上 翔太郎<small>Shotaro Danjo</small></a>
@@ -56,7 +61,7 @@
     </div>
   </header>
 
-  <main>
+  <main id="main" tabindex="-1">
     <section class="page-hero compact">
       <div class="container">
         <p class="eyebrow">CALCULATOR</p>
@@ -109,19 +114,25 @@
           <p class="calculator-status" id="pdf-q-status" role="status">—</p>
 
           <div class="calculator-table-scroll">
-            <table class="calculator-result compact-result">
+            <table class="calculator-result compact-result" id="reflection-table">
               <caption>立方晶の代表的な低角反射（幾何学的位置）</caption>
               <thead>
                 <tr>
                   <th scope="col">反射</th>
                   <th scope="col">d [Å]</th>
-                  <th scope="col">Q [Å<sup>−1</sup>]</th>
+                  <th scope="col" data-copy-label="Q [Å⁻¹]">Q [Å<sup>−1</sup>]</th>
                   <th scope="col">2θ [°]</th>
                   <th scope="col">判定</th>
                 </tr>
               </thead>
               <tbody id="reflection-results"></tbody>
             </table>
+          </div>
+
+          <div class="copy-actions">
+            <button class="copy-button" type="button" data-copy-text="real-space-resolution" data-copy-status="pdf-q-copy-status">Δrをコピー</button>
+            <button class="copy-button" type="button" data-copy-table="reflection-table" data-copy-status="pdf-q-copy-status">表をコピー</button>
+            <span class="copy-feedback" id="pdf-q-copy-status" role="status" aria-live="polite"></span>
           </div>
 
           <section class="calculator-explanation">
