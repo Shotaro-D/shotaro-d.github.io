@@ -31,7 +31,7 @@ python3 tests/test_light_energy_reference.py
 
 ## Site consistency checks
 
-Checks the skip link, Open Graph tags, and that dates on the Japanese and English home and awards pages agree:
+Checks the skip link, Open Graph tags, that dates on the Japanese and English home and awards pages agree, and also header order (menu button before the navigation), navigation labels, news-to-post anchors, and presentation numbering:
 
 ```sh
 node tests/site-consistency.test.mjs

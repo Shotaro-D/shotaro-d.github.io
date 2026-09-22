@@ -65,16 +65,16 @@
     <div class="container header-inner">
       <a class="site-name" href="index.html">段上 翔太郎<small>Shotaro Danjo</small></a>
       <div class="header-actions">
+        <button class="menu-button" type="button" aria-expanded="false" aria-controls="nav">メニュー<span class="sr-only">を開く</span></button>
+
         <nav id="nav" class="nav" aria-label="メインメニュー">
           <a aria-current="page" href="index.html">Home</a>
           <a href="profile.html">Profile</a>
-          <a href="publications.html">Publication</a>
-          <a href="presentations.html">Conference</a>
-          <a href="award.html">Award</a>
-          <a href="resources.html">Others</a>
+          <a href="publications.html">Publications</a>
+          <a href="presentations.html">Presentations</a>
+          <a href="award.html">Awards</a>
+          <a href="resources.html">Tools</a>
         </nav>
-
-        <button class="menu-button" type="button" aria-expanded="false" aria-controls="nav">メニュー<span class="sr-only">を開く</span></button>
 
         <nav class="language-switch" aria-label="言語選択">
           <a aria-current="page" lang="ja" href="index.html">JP</a>
@@ -85,12 +85,13 @@
   </header>
 
   <main id="main" tabindex="-1">
-    <section class="page-hero">
+    <section class="page-hero home-hero">
       <div class="container">
-        <h1>段上 翔太郎<br>
-        Shotaro Danjo</h1>
+        <h1 class="hero-name">段上 翔太郎 <span class="hero-name-sub" lang="en">Shotaro Danjo</span></h1>
 
-        <p>京都大学大学院工学研究科 化学工学専攻 博士後期課程</p>
+        <p class="hero-affiliation">京都大学大学院工学研究科 化学工学専攻 博士後期課程</p>
+
+        <p class="hero-lead">マイクロリアクターの強混合場を利用したナノ粒子・MOF粒子の合成と，放射光を用いた液中時分割 in situ X線回折による粒子形成機構の解明に取り組んでいます。</p>
 
         <p><a class="button" href="profile.html">プロフィールを見る</a></p>
       </div>
@@ -101,39 +102,60 @@
         <h2>Recent news</h2>
 
         <ul class="simple-list news-list">
-          <li class="news-post-card">
-            <a class="news-post-target" href="post.html#chemcomm-2026" aria-label="ChemComm論文の投稿詳細を開く"></a>
-            <time datetime="2026-07-30">2026年7月30日</time><a href="https://doi.org/10.1039/D6CC04499A" target="_blank" rel="noopener noreferrer">ZIF-8粒子の添加剤フリーサイズ制御に関する共著論文</a>が，<em>Chemical Communications</em>に掲載されました。
-          </li>
+          <li>
+            <time datetime="2026-07-30">2026年7月30日</time>
 
-          <li class="news-post-card">
-            <a class="news-post-target" href="post.html#cej-2026" aria-label="inkjet Auナノ粒子論文の投稿詳細を開く"></a>
-            <time datetime="2026-03-01">2026年3月1日</time><a href="https://doi.org/10.1016/j.cej.2026.174028" target="_blank" rel="noopener noreferrer">Auナノ粒子含有キトサンマイクロカプセルに関する共著論文</a>が<em>Chemical Engineering Journal</em>に掲載されました。
+            <p>ZIF-8粒子の添加剤フリーサイズ制御に関する共著論文が，<em>Chemical Communications</em>に掲載されました。</p>
+
+            <p class="news-links"><a href="post.html#chemcomm-2026">研究紹介</a><a href="https://doi.org/10.1039/D6CC04499A" target="_blank" rel="noopener noreferrer">論文</a></p>
           </li>
 
           <li>
-            <time datetime="2025-11">2025年11月</time><a href="https://www4.scej.org/meeting/ks2025/award.html" target="_blank" rel="noopener noreferrer">化学工学会 合同支部大会「吹田大会2025」にて学生優秀研究発表賞を受賞</a>しました。
-          </li>
+            <time datetime="2026-03-01">2026年3月1日</time>
 
-          <li class="news-post-card">
-            <a class="news-post-target" href="post.html#chem-mater-2025" aria-label="Pd–Ru論文の投稿詳細を開く"></a>
-            <time datetime="2025-07-08">2025年7月8日</time><a href="https://pubs.acs.org/doi/10.1021/acs.chemmater.5c00747" target="_blank" rel="noopener noreferrer">Pd–Ru合金ナノ粒子の室温合成に関する論文</a>が<em>Chemistry of Materials</em>に掲載されました。
-          </li>
+            <p>Auナノ粒子含有キトサンマイクロカプセルに関する共著論文が，<em>Chemical Engineering Journal</em>に掲載されました。</p>
 
-          <li>
-            <time datetime="2025-03">2025年3月</time>吉田科学技術財団「国際研究集会派遣研究者」に採択されました。
+            <p class="news-links"><a href="post.html#cej-2026">研究紹介</a><a href="https://doi.org/10.1016/j.cej.2026.174028" target="_blank" rel="noopener noreferrer">論文</a></p>
           </li>
 
           <li>
-            <time datetime="2024-11">2024年11月</time>ホソカワ粉体工学振興財団「令和6年度 研究者育成のための援助」に採択されました。
+            <time datetime="2025-11">2025年11月</time>
+
+            <p>化学工学会 合同支部大会「吹田大会2025」にて，学生優秀研究発表賞を受賞しました。</p>
+
+            <p class="news-links"><a href="award.html">受賞一覧</a><a href="https://www4.scej.org/meeting/ks2025/award.html" target="_blank" rel="noopener noreferrer">学会の受賞ページ</a></p>
           </li>
 
           <li>
-            <time datetime="2024-09">2024年9月</time><a href="https://pub.confit.atlas.jp/ja/event/colloid2024/content/award" target="_blank" rel="noopener noreferrer">第75回コロイドおよび界面化学討論会にて若手口頭講演賞を受賞</a>しました。
+            <time datetime="2025-07-08">2025年7月8日</time>
+
+            <p>Pd–Ru合金ナノ粒子の室温合成に関する論文が，<em>Chemistry of Materials</em>に掲載されました。</p>
+
+            <p class="news-links"><a href="post.html#chem-mater-2025">研究紹介</a><a href="https://pubs.acs.org/doi/10.1021/acs.chemmater.5c00747" target="_blank" rel="noopener noreferrer">論文</a></p>
+          </li>
+
+          <li>
+            <time datetime="2025-03">2025年3月</time>
+
+            <p>吉田科学技術財団「国際研究集会派遣研究者」に採択されました。</p>
+          </li>
+
+          <li>
+            <time datetime="2024-11">2024年11月</time>
+
+            <p>ホソカワ粉体工学振興財団「令和6年度 研究者育成のための援助」に採択されました。</p>
+          </li>
+
+          <li>
+            <time datetime="2024-09">2024年9月</time>
+
+            <p>第75回コロイドおよび界面化学討論会にて，若手口頭講演賞を受賞しました。</p>
+
+            <p class="news-links"><a href="award.html">受賞一覧</a><a href="https://pub.confit.atlas.jp/ja/event/colloid2024/content/award" target="_blank" rel="noopener noreferrer">学会の受賞ページ</a></p>
           </li>
         </ul>
 
-        <p class="button-row"><a class="button button-outline" href="publications.html">論文一覧</a><a class="button button-outline" href="post.html">Posts</a></p>
+        <p class="button-row"><a class="button button-outline" href="publications.html">論文一覧</a><a class="button button-outline" href="post.html">研究成果の紹介</a></p>
       </div>
     </section>
   </main>

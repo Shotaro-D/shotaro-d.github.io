@@ -227,4 +227,98 @@ const enMatchCount = matchNewsToAward(enNewsItems, enAwardItems, 'en (en/index.h
 // 現状は「吹田大会2025」と「第75回コロイド討論会」の2件ずつが一致するはず。
 console.log(`PASS: news/award link matches verified — ja: ${jaMatchCount}, en: ${enMatchCount} entries.`);
 
+// 7. 全20ページ: メニューボタンがナビゲーションより前にあること
+for (const page of PAGES) {
+  const html = read(page);
+  const buttonIndex = html.indexOf('<button class="menu-button"');
+  const navIndex = html.indexOf('<nav id="nav"');
+  assert.ok(buttonIndex !== -1, `${page}: <button class="menu-button" が見つかりません`);
+  assert.ok(navIndex !== -1, `${page}: <nav id="nav" が見つかりません`);
+  assert.ok(buttonIndex < navIndex, `${page}: メニューボタンが <nav id="nav" より前にありません`);
+}
+
+console.log(`PASS: menu button precedes the navigation on ${PAGES.length} pages.`);
+
+// 8. 全20ページ: ナビゲーションのリンク文字列の並び
+const EXPECTED_NAV_LABELS = ['Home', 'Profile', 'Publications', 'Presentations', 'Awards', 'Tools'];
+
+for (const page of PAGES) {
+  const html = read(page);
+  const navMatch = html.match(/<nav id="nav"[^>]*>([\s\S]*?)<\/nav>/);
+  assert.ok(navMatch, `${page}: <nav id="nav" …>…</nav> が見つかりません`);
+  const labels = [...navMatch[1].matchAll(/<a\b[^>]*>([^<]*)<\/a>/g)].map((match) => match[1].trim());
+  assert.deepEqual(labels, EXPECTED_NAV_LABELS, `${page}: ナビゲーションのリンク文字列が想定と異なります: ${JSON.stringify(labels)}`);
+}
+
+console.log(`PASS: navigation labels verified on ${PAGES.length} pages.`);
+
+// 9. 全20ページ: 廃止したクラス名・要素が残っていないこと
+const REMOVED_STRINGS = ['news-post-target', 'news-post-card', 'page-grid', 'side-heading'];
+
+for (const page of PAGES) {
+  const html = read(page);
+  for (const needle of REMOVED_STRINGS) {
+    assert.ok(!html.includes(needle), `${page}: 廃止したはずの文字列 "${needle}" が残っています`);
+  }
+}
+
+console.log(`PASS: removed classes (news-post-target, news-post-card, page-grid, side-heading) are absent on ${PAGES.length} pages.`);
+
+// 10. index.html / en/index.html のニュースの post.html#ID リンクが post.html 側の id と対応すること
+const verifyNewsToPostAnchors = (indexPage, postPage, prefix) => {
+  const indexHtml = read(indexPage);
+  const postHtml = read(postPage);
+  const ids = [...indexHtml.matchAll(new RegExp(`href="${prefix}#([^"]+)"`, 'g'))].map((match) => match[1]);
+  assert.ok(ids.length > 0, `${indexPage}: "${prefix}#ID" 形式のリンクが見つかりません`);
+  for (const id of ids) {
+    const idRegex = new RegExp(`id="${id}"`);
+    assert.ok(idRegex.test(postHtml), `${indexPage}: リンク先の id="${id}" が ${postPage} に見つかりません`);
+  }
+  return ids.length;
+};
+
+const jaAnchorCount = verifyNewsToPostAnchors('index.html', 'post.html', 'post\\.html');
+const enAnchorCount = verifyNewsToPostAnchors('en/index.html', 'en/post.html', 'post\\.html');
+
+console.log(`PASS: news-to-post anchors verified — ja: ${jaAnchorCount}, en: ${enAnchorCount} links.`);
+
+// 11. presentations.html / en/presentations.html: <ol class="presentation-list"> の番号が 1..total をちょうど1回ずつ覆うこと
+const verifyPresentationNumbering = (page, totalNeedleFn) => {
+  const html = read(page);
+  const olRegex = /<ol class="presentation-list" start="(\d+)"( reversed="")?>([\s\S]*?)<\/ol>/g;
+  const seen = new Set();
+  let match;
+  let olCount = 0;
+  while ((match = olRegex.exec(html)) !== null) {
+    olCount += 1;
+    const start = Number(match[1]);
+    const isReversed = match[2] !== undefined;
+    const liCount = [...match[3].matchAll(/<li\b/g)].length;
+    assert.ok(liCount > 0, `${page}: <ol class="presentation-list" start="${start}"> に <li> がありません`);
+    for (let i = 0; i < liCount; i += 1) {
+      const num = isReversed ? start - i : start + i;
+      assert.ok(!seen.has(num), `${page}: 発表番号 ${num} が複数のリストで重複しています`);
+      seen.add(num);
+    }
+  }
+  assert.ok(olCount > 0, `${page}: <ol class="presentation-list" …> が見つかりません`);
+
+  const total = seen.size;
+  for (let n = 1; n <= total; n += 1) {
+    assert.ok(seen.has(n), `${page}: 発表番号 ${n} が見つかりません（1..${total} を1回ずつ覆っていません）`);
+  }
+  assert.equal(seen.size, total, `${page}: 発表番号の集合が 1..${total} をちょうど1回ずつ覆っていません`);
+
+  assert.ok(totalNeedleFn(total).test(html), `${page}: 件数の表記（${totalNeedleFn(total)}）が本文に見つかりません`);
+
+  return total;
+};
+
+const jaPresentationTotal = verifyPresentationNumbering('presentations.html', (total) => new RegExp(`全${total}件`));
+const enPresentationTotal = verifyPresentationNumbering('en/presentations.html', (total) => new RegExp(`${total} conference presentations`));
+
+assert.equal(jaPresentationTotal, enPresentationTotal, 'presentations.html と en/presentations.html の発表総数が一致しません');
+
+console.log(`PASS: presentation numbering verified — total: ${jaPresentationTotal} (ja/en match).`);
+
 console.log('PASS: all site consistency checks passed.');
