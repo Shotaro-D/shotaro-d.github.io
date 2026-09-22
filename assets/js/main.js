@@ -1,5 +1,6 @@
 const button = document.querySelector('.menu-button');
 const nav = document.querySelector('.nav');
+const header = document.querySelector('.site-header');
 const buttonLabel = button?.querySelector('.sr-only');
 const labels = document.documentElement.lang.startsWith('en')
   ? { open: ': open navigation', close: ': close navigation' }
@@ -25,6 +26,18 @@ document.addEventListener('keydown', (event) => {
   setMenuState(false);
   // 非表示になったリンクにフォーカスが取り残されないよう，開閉ボタンへ戻す。
   if (focusWasInMenu) button?.focus();
+});
+
+// メニューの外をクリック・タップしたら閉じる。
+document.addEventListener('click', (event) => {
+  if (!nav?.classList.contains('is-open') || header?.contains(event.target)) return;
+  setMenuState(false);
+});
+
+// フォーカスがヘッダーの外へ移ったら閉じる（開いたメニューが本文のフォーカス位置を覆わないようにする）。
+document.addEventListener('focusin', (event) => {
+  if (!nav?.classList.contains('is-open') || header?.contains(event.target)) return;
+  setMenuState(false);
 });
 
 // 計算結果のコピー（data-copy-text / data-copy-table）。クリック委譲で拾う。

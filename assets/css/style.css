@@ -57,7 +57,7 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic Medium", "Yu Gothic", Meiryo, sans-serif;
-  font-size: clamp(.9375rem, .94rem + .08vw, 1rem);
+  font-size: 1rem;
   line-height: 1.82;
   text-rendering: optimizeLegibility;
 }
@@ -104,6 +104,7 @@ a:hover {
 /* Header */
 
 .site-header {
+  container: site-header / inline-size;
   position: sticky;
   top: 0;
   z-index: 10;
@@ -117,7 +118,7 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 2rem;
+  gap: 1.5rem;
 }
 
 .header-actions {
@@ -137,7 +138,7 @@ a:hover {
 .site-name small {
   display: block;
   color: var(--muted);
-  font-size: .7rem;
+  font-size: .8125rem;
   font-weight: 500;
   letter-spacing: .045em;
 }
@@ -146,7 +147,7 @@ a:hover {
   display: flex;
   align-items: center;
   gap: .2rem;
-  font-size: .8rem;
+  font-size: .875rem;
 }
 
 .nav a {
@@ -154,6 +155,7 @@ a:hover {
   padding: .34rem .6rem;
   border-radius: 999px;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .nav a:hover {
@@ -193,7 +195,7 @@ a:hover {
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--surface);
-  font-size: .72rem;
+  font-size: .8125rem;
   font-weight: 700;
   line-height: 1;
   letter-spacing: .025em;
@@ -258,7 +260,7 @@ a:hover {
   border-radius: 999px;
   background: var(--accent);
   color: var(--button-text);
-  font-size: .82rem;
+  font-size: .875rem;
   font-weight: 700;
   line-height: 1.4;
   text-decoration: none;
@@ -299,7 +301,7 @@ a:hover {
 .eyebrow {
   margin: 0 0 .6rem;
   color: var(--accent);
-  font-size: .72rem;
+  font-size: .8125rem;
   font-weight: 700;
   letter-spacing: .1em;
 }
@@ -314,11 +316,42 @@ a:hover {
 }
 
 .page-hero p:not(.eyebrow) {
-  max-width: 680px;
+  max-width: 44rem;
   margin: 1.55rem 0 0;
   font-size: 1.02rem;
   color: var(--hero-text);
   text-wrap: pretty;
+  /* 日本語は文節単位で改行する（対応ブラウザのみ。英語ページには影響しない）。 */
+  word-break: auto-phrase;
+}
+
+.home-hero {
+  padding: clamp(2.75rem, 6vw, 4rem) 0 clamp(2.25rem, 5vw, 3.25rem);
+}
+
+.page-hero .hero-name {
+  font-size: clamp(2rem, 1.2rem + 2.6vw, 3.25rem);
+  line-height: 1.2;
+}
+
+/* 副表記（ja では英語名，en では日本語名）は補助的な大きさにする。 */
+.page-hero .hero-name-sub {
+  display: block;
+  margin-top: .4rem;
+  color: var(--muted);
+  font-size: clamp(1rem, .9rem + .4vw, 1.25rem);
+  font-weight: 500;
+  letter-spacing: .04em;
+  line-height: 1.4;
+}
+
+.page-hero p.hero-affiliation {
+  margin-top: 1.1rem;
+  font-weight: 600;
+}
+
+.page-hero p.hero-lead {
+  margin-top: .5rem;
 }
 
 /* Content */
@@ -341,7 +374,8 @@ a:hover {
   font-size: 1rem;
 }
 
-.section p {
+/* 投稿カード内の段落は下の .post-entry 用ルールで余白を管理するため除外する（:where() で詳細度は 0,1,1 のまま）。 */
+.section p:not(:where(.post-entry *)) {
   margin: 0 0 1rem;
 }
 
@@ -351,7 +385,7 @@ a:hover {
   background: var(--accent);
   color: var(--button-text);
   text-decoration: none;
-  font-size: .82rem;
+  font-size: .875rem;
   font-weight: 700;
   border: 1px solid transparent;
   border-radius: 999px;
@@ -400,13 +434,6 @@ a:hover {
   margin: 0;
 }
 
-.home-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr);
-  gap: 4rem;
-}
-
-.research-list,
 .link-list,
 .simple-list {
   margin: 0;
@@ -414,41 +441,23 @@ a:hover {
   list-style: none;
 }
 
-.research-list li,
-.news-list li {
-  padding: 1.1rem 0;
-  border-top: 1px solid var(--line);
-}
-
-.research-list li:last-child {
-  border-bottom: 1px solid var(--line);
-}
-
-.research-list strong {
-  display: block;
-  margin-bottom: .2rem;
-}
-
-.research-list p {
-  margin: 0;
-  color: var(--muted);
-  font-size: .88rem;
+.news-list {
+  max-width: 44rem;
 }
 
 .news-list li {
-  position: relative;
-  padding: 1.18rem 1.25rem;
+  padding: 1.1rem 1.25rem;
   border: 1px solid var(--line);
   border-radius: .7rem;
   background: var(--surface);
-  font-size: .9rem;
+  font-size: 1rem;
 }
 
 .news-list time {
   display: block;
-  margin-bottom: .25rem;
+  margin-bottom: .2rem;
   color: var(--muted);
-  font-size: .74rem;
+  font-size: .8125rem;
   font-weight: 700;
   letter-spacing: .035em;
 }
@@ -457,34 +466,40 @@ a:hover {
   margin-top: .7rem;
 }
 
-/* 移動・影などの反応は，カード全体がリンクになっている項目だけに限定する。 */
-.news-post-card {
-  cursor: pointer;
-  isolation: isolate;
-  transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+.news-list p {
+  margin: 0;
 }
 
-.news-post-card:hover {
-  border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
-  box-shadow: var(--shadow-soft);
-  transform: translateY(-2px);
+.news-list .news-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem 1.4rem;
+  margin-top: .45rem;
 }
 
-.news-post-target {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  border-radius: inherit;
-}
-
-.news-post-card > a:not(.news-post-target) {
+.news-links a {
   position: relative;
-  z-index: 1;
+  font-size: .875rem;
+  font-weight: 700;
 }
 
-.news-post-target:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
+/* 文字の高さに関係なく，操作領域の高さを44pxにする（レイアウトは変えない）。 */
+.news-links a::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 44px;
+  transform: translateY(-50%);
+}
+
+/* 外部サイトへのリンクであることを示す（読み上げでは無視させる）。 */
+.news-links a[target="_blank"]::after {
+  content: "\2197";
+  content: "\2197" / "";
+  margin-left: .2em;
+  font-weight: 400;
 }
 
 .post-list {
@@ -508,7 +523,7 @@ a:hover {
 .post-date {
   margin: 0;
   color: var(--muted);
-  font-size: .74rem;
+  font-size: .8125rem;
   font-weight: 700;
   letter-spacing: .06em;
 }
@@ -523,7 +538,7 @@ a:hover {
   max-width: 68ch;
   margin: 1rem 0 0;
   color: var(--muted);
-  font-size: .9rem;
+  font-size: 1rem;
 }
 
 .post-media {
@@ -546,7 +561,7 @@ a:hover {
 .post-media figcaption {
   margin-top: .45rem;
   color: var(--muted);
-  font-size: .72rem;
+  font-size: .8125rem;
   line-height: 1.55;
   overflow-wrap: anywhere;
 }
@@ -559,31 +574,8 @@ a:hover {
 }
 
 .post-links a {
-  font-size: .82rem;
+  font-size: .875rem;
   overflow-wrap: anywhere;
-}
-
-.page-grid {
-  display: grid;
-  grid-template-columns: 210px minmax(0, 1fr);
-  gap: 4rem;
-}
-
-/* グリッド項目は既定で内容幅より縮まないため，長いURL等があっても列幅内に収まるよう明示する。 */
-.home-grid > *,
-.page-grid > * {
-  min-width: 0;
-}
-
-.side-heading {
-  font-size: .75rem;
-  color: var(--muted);
-  font-weight: 700;
-  letter-spacing: .08em;
-}
-
-.award-grid {
-  gap: 2.8rem;
 }
 
 .profile-photo {
@@ -597,9 +589,65 @@ a:hover {
   margin-bottom: 1.25rem;
 }
 
+.profile-intro {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 1rem 2rem;
+  align-items: start;
+  margin-bottom: 3rem;
+}
+
+.profile-intro .profile-photo {
+  margin: 0;
+}
+
+/* 日本語は文節単位で改行する（対応ブラウザのみ。英語ページには影響しない）。 */
+.profile-intro p {
+  word-break: auto-phrase;
+}
+
+.profile-links {
+  margin: 0;
+}
+
+.profile-links > div {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr);
+  gap: .15rem 1rem;
+  padding: .55rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.profile-links > div:last-child {
+  border-bottom: 1px solid var(--line);
+}
+
+.profile-links dt {
+  color: var(--muted);
+  font-size: .875rem;
+  font-weight: 700;
+}
+
+.profile-links dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.orcid-icon {
+  width: 1em;
+  height: 1em;
+  margin-inline-end: .4em;
+  vertical-align: -.125em;
+}
+
 /* 長いURLやDOIが列幅を超える場合は折り返す。 */
 .content {
+  max-width: 44rem;
   overflow-wrap: break-word;
+}
+
+.content-wide {
+  max-width: none;
 }
 
 /* 本文用の共通タイポグラフィ。投稿カード（.post-entry）は独自設計のため適用範囲から外す。
@@ -618,10 +666,11 @@ a:hover {
 
 .content p:not(:where(.post-entry *)),
 .content li:not(:where(.post-entry *)) {
-  font-size: .92rem;
+  font-size: 1rem;
 }
 
-.content ul {
+/* class 付きのリスト（.link-list, .timeline 等）は各ルールで余白を管理するため除外する。 */
+.content ul:where(:not([class])) {
   padding-left: 1.3rem;
 }
 
@@ -647,7 +696,7 @@ a:hover {
 .timeline time,
 .award-list time {
   color: var(--muted);
-  font-size: .78rem;
+  font-size: .8125rem;
 }
 
 .timeline p {
@@ -673,14 +722,14 @@ a:hover {
 
 .publication h3 {
   margin: .25rem 0 .35rem;
-  font-size: 1rem;
+  font-size: 1.0625rem;
   line-height: 1.65;
   font-weight: 600;
 }
 
 .publication p {
   margin: .2rem 0;
-  font-size: .87rem;
+  font-size: 1rem;
 }
 
 .content .publication-year {
@@ -690,7 +739,7 @@ a:hover {
   border: 1px solid var(--line);
   border-radius: 999px;
   color: var(--muted);
-  font-size: .78rem;
+  font-size: .8125rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -702,7 +751,7 @@ a:hover {
 }
 
 .publication a {
-  font-size: .8rem;
+  font-size: .875rem;
   overflow-wrap: anywhere;
 }
 
@@ -722,7 +771,7 @@ a:hover {
 .cover-art figcaption {
   margin-top: .45rem;
   color: var(--muted);
-  font-size: .72rem;
+  font-size: .8125rem;
   line-height: 1.55;
   overflow-wrap: anywhere;
 }
@@ -732,6 +781,17 @@ a:hover {
   padding-bottom: .4rem;
   border-bottom: 2px solid var(--accent);
   font-size: 1.12rem;
+}
+
+/* 本文の先頭に来る年見出しは，セクションの上余白と重ならないようにする。 */
+.content > h2.presentation-year:first-child {
+  margin-top: 0;
+}
+
+.content .list-note {
+  margin: .6rem 0 .2rem;
+  color: var(--muted);
+  font-size: .875rem;
 }
 
 .presentation-list {
@@ -770,7 +830,7 @@ a:hover {
 .calculator-form legend {
   padding: 0 .35rem;
   color: var(--muted);
-  font-size: .78rem;
+  font-size: .8125rem;
   font-weight: 700;
 }
 
@@ -782,7 +842,7 @@ a:hover {
 }
 
 .calculator-fields label {
-  font-size: .82rem;
+  font-size: .875rem;
 }
 
 .calculator-fields input,
@@ -806,21 +866,21 @@ a:hover {
 .calculator-message {
   margin: .7rem 0 0;
   color: var(--accent);
-  font-size: .82rem;
+  font-size: .875rem;
 }
 
 .calculator-result {
   width: 100%;
   margin-top: 1rem;
   border-collapse: collapse;
-  font-size: .8rem;
+  font-size: .875rem;
 }
 
 .calculator-result caption {
   margin-bottom: .45rem;
   text-align: left;
   color: var(--muted);
-  font-size: .75rem;
+  font-size: .8125rem;
 }
 
 .calculator-result th,
@@ -836,7 +896,7 @@ a:hover {
 }
 
 .calculator-result.compact-result {
-  font-size: .76rem;
+  font-size: .8125rem;
 }
 
 .calculator-result.compact-result th,
@@ -866,7 +926,7 @@ a:hover {
 
 .calculator-summary-item dt {
   color: var(--muted);
-  font-size: .72rem;
+  font-size: .8125rem;
 }
 
 .calculator-summary-item dd {
@@ -881,7 +941,7 @@ a:hover {
   padding: .7rem .85rem;
   border-left: 3px solid var(--accent);
   background: var(--pale);
-  font-size: .84rem;
+  font-size: .875rem;
 }
 
 .calculator-table-scroll {
@@ -899,7 +959,7 @@ a:hover {
   border-left: 3px solid var(--accent);
   background: var(--pale);
   color: var(--ink);
-  font-size: .78rem;
+  font-size: .8125rem;
   line-height: 1.65;
 }
 
@@ -911,7 +971,7 @@ a:hover {
 
 .calculator-explanation p {
   max-width: 72ch;
-  font-size: .88rem;
+  font-size: 1rem;
   line-height: 1.75;
 }
 
@@ -943,12 +1003,12 @@ a:hover {
 .symbol-group p {
   margin: 0 0 1rem;
   color: var(--muted);
-  font-size: .8rem;
+  font-size: .875rem;
 }
 
 .symbol-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
   gap: .45rem;
 }
 
@@ -991,14 +1051,14 @@ a:hover {
 
 .symbol-button .symbol-label {
   color: var(--muted);
-  font-size: .66rem;
+  font-size: .8125rem;
   line-height: 1.35;
 }
 
 .symbol-button .copy-label {
   margin-top: .25rem;
   color: var(--accent);
-  font-size: .64rem;
+  font-size: .8125rem;
   font-weight: 700;
 }
 
@@ -1006,7 +1066,7 @@ a:hover {
   min-height: 1.5em;
   margin-top: 1.2rem;
   color: var(--accent);
-  font-size: .84rem;
+  font-size: .875rem;
   font-weight: 700;
 }
 
@@ -1027,7 +1087,7 @@ a:hover {
   background: var(--surface);
   color: var(--accent);
   font: inherit;
-  font-size: .78rem;
+  font-size: .875rem;
   font-weight: 700;
   line-height: 1.3;
   cursor: pointer;
@@ -1041,7 +1101,7 @@ a:hover {
 
 .copy-feedback {
   color: var(--accent);
-  font-size: .78rem;
+  font-size: .875rem;
   font-weight: 700;
 }
 
@@ -1080,12 +1140,12 @@ a:hover {
 .link-list strong {
   display: block;
   color: var(--ink);
-  font-size: .95rem;
+  font-size: 1rem;
 }
 
 .link-list span {
   color: var(--muted);
-  font-size: .8rem;
+  font-size: .875rem;
 }
 
 /* Footer */
@@ -1096,7 +1156,7 @@ a:hover {
   padding: 2.7rem 0;
   background: color-mix(in srgb, var(--pale) 56%, var(--paper));
   color: var(--muted);
-  font-size: .73rem;
+  font-size: .8125rem;
 }
 
 .footer-inner {
@@ -1107,7 +1167,18 @@ a:hover {
 
 /* Responsive */
 
-@media (max-width: 780px) {
+/* 横向きタブレットなど，タッチ操作で横並びナビが表示される場合も操作領域を確保する。 */
+@media (pointer: coarse) {
+  .nav a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+
+/* ヘッダーの折り畳み判定をコンテナクエリにする。em はヘッダー自身（.site-header）の文字サイズが基準になるため，
+   ブラウザの既定文字サイズを拡大するとヘッダーの実効幅が広がり，より早く（広い画面幅で）折り畳まれる。 */
+@container site-header (max-width: 48.75em) {
   /* 文字を大きく設定したときは，言語切替などを次の行へ折り返す。 */
   .header-inner {
     position: relative;
@@ -1126,7 +1197,7 @@ a:hover {
     align-items: center;
     justify-content: center;
     color: var(--ink);
-    font-size: .8rem;
+    font-size: .875rem;
   }
 
   .nav {
@@ -1136,8 +1207,9 @@ a:hover {
     top: 100%;
     left: calc(-1 * var(--gutter));
     right: calc(-1 * var(--gutter));
-    max-height: calc(100vh - 68px);
-    max-height: calc(100dvh - 68px);
+    /* 包含ブロック（.header-inner）の高さ＝ヘッダーの高さを差し引き，ヘッダーが複数行になってもメニューの下端を画面内に収める。 */
+    max-height: calc(100vh - 100%);
+    max-height: calc(100dvh - 100%);
     overflow-y: auto;
     overscroll-behavior: contain;
     padding: 1rem var(--gutter) 1.3rem;
@@ -1160,21 +1232,9 @@ a:hover {
     align-items: center;
     min-height: 44px;
   }
+}
 
-  .page-hero {
-    padding: 3.6rem 0 3.1rem;
-  }
-
-  .home-grid,
-  .page-grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 2.4rem;
-  }
-
-  .page-grid {
-    gap: 1rem;
-  }
-
+@media (max-width: 48.75em) {
   .calculator-grid {
     grid-template-columns: 1fr;
   }
@@ -1214,8 +1274,7 @@ a:hover {
     animation-iteration-count: 1 !important;
   }
 
-  .button:hover,
-  .news-post-card:hover {
+  .button:hover {
     transform: none;
   }
 }
@@ -1240,7 +1299,7 @@ a:hover {
   }
 }
 
-@media (max-width: 420px) {
+@media (max-width: 26.25em) {
   :root {
     --gutter: 15px;
   }
@@ -1255,20 +1314,23 @@ a:hover {
   }
 
   .site-name small {
-    font-size: .64rem;
+    font-size: .8125rem;
   }
 
   .language-switch a {
     padding-inline: .34rem;
   }
-}
 
-/* 横向きタブレットなど，タッチ操作で横並びナビが表示される場合も操作領域を確保する。 */
-@media (pointer: coarse) and (min-width: 781px) {
-  .nav a {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
+  .profile-intro {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-intro .profile-photo {
+    max-width: 120px;
+  }
+
+  .profile-links > div {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -1332,7 +1394,6 @@ a:hover {
     background: none;
   }
 
-  .news-post-card,
   .post-media img,
   .cover-art img {
     box-shadow: none;
@@ -1387,8 +1448,7 @@ a:hover {
   h1,
   h2,
   h3,
-  .publication-year,
-  .side-heading {
+  .publication-year {
     break-after: avoid;
     page-break-after: avoid;
   }
