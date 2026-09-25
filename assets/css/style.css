@@ -313,6 +313,7 @@ a:hover {
   line-height: 1.16;
   letter-spacing: -.035em;
   text-wrap: balance;
+  word-break: auto-phrase;
 }
 
 .page-hero p:not(.eyebrow) {

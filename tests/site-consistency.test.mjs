@@ -349,4 +349,42 @@ console.log(`PASS: presentation numbering verified — total: ${jaPresentationTo
   console.log(`PASS: Google Analytics notice verified in the footer on ${checkedCount} pages.`);
 }
 
+// 13. 404.html: どの階層のURLにも返されるため，サイト内参照はルートからの絶対パスで，検索対象外であること
+{
+  const page = '404.html';
+  const html = read(page);
+
+  assert.ok(html.includes('<meta name="robots" content="noindex">'), `${page}: noindex が指定されていません`);
+  assert.ok(/<body>\s*\n\s*<a class="skip-link" href="#main">本文へ移動<\/a>/.test(html), `${page}: <body> 直後の skip-link が見つかりません`);
+  assert.ok(html.includes('<main id="main" tabindex="-1">'), `${page}: <main id="main" tabindex="-1"> が見つかりません`);
+
+  const refs = [...html.matchAll(/(?:href|src)="([^"]+)"/g)].map((match) => match[1]);
+  for (const ref of refs) {
+    assert.ok(/^(\/|#|https?:|mailto:)/.test(ref), `${page}: 相対パスの参照があります（下層URLで壊れます）: ${ref}`);
+  }
+  assert.ok(refs.includes('/') && refs.includes('/en/'), `${page}: 日本語・英語のホームへのリンクがありません`);
+
+  console.log(`PASS: 404 page verified (${refs.length} root-relative or external references).`);
+}
+
+// 14. en/presentations.html: 日本語の発表には lang="ja" を付け，注記の後の区切りは半角「, 」にそろえること
+{
+  const page = 'en/presentations.html';
+  const html = read(page);
+  const japanese = /[぀-ヿ一-鿿]/;
+  let jaCount = 0;
+
+  for (const match of html.matchAll(/<li\b([^>]*)>([\s\S]*?)<\/li>/g)) {
+    const [, attrs, body] = match;
+    const bodyWithoutLinks = body.replace(/<a\b[^>]*>[\s\S]*?<\/a>/g, '');
+    if (!japanese.test(bodyWithoutLinks)) continue;
+    jaCount += 1;
+    assert.ok(attrs.includes('lang="ja"'), `${page}: 日本語の発表に lang="ja" がありません: ${body.slice(0, 60)}`);
+  }
+  assert.ok(jaCount > 0, `${page}: 日本語の発表が見つかりません`);
+  assert.ok(!html.includes(')，'), `${page}: 半角括弧の後に全角読点「，」が残っています`);
+
+  console.log(`PASS: lang="ja" verified on ${jaCount} Japanese entries in ${page}.`);
+}
+
 console.log('PASS: all site consistency checks passed.');
