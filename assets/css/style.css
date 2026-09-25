@@ -1165,6 +1165,12 @@ a:hover {
   gap: 1rem;
 }
 
+.footer-note {
+  margin: 1.25rem auto 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
 /* Responsive */
 
 /* 横向きタブレットなど，タッチ操作で横並びナビが表示される場合も操作領域を確保する。 */

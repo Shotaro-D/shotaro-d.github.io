@@ -321,4 +321,32 @@ assert.equal(jaPresentationTotal, enPresentationTotal, 'presentations.html と e
 
 console.log(`PASS: presentation numbering verified — total: ${jaPresentationTotal} (ja/en match).`);
 
+// 12. Googleアナリティクスを読み込むページには，フッターに解析利用の開示文言があること
+{
+  let checkedCount = 0;
+  for (const page of PAGES) {
+    const html = read(page);
+    if (!html.includes('googletagmanager.com/gtag/js')) continue;
+    checkedCount += 1;
+    const isEn = page.startsWith('en/');
+
+    const footerMatch = html.match(/<footer class="footer">([\s\S]*?)<\/footer>/);
+    assert.ok(footerMatch, `${page}: <footer class="footer">…</footer> が見つかりません`);
+    const footerHtml = footerMatch[1];
+
+    assert.ok(
+      footerHtml.includes('<p class="container footer-note">'),
+      `${page}: <footer class="footer"> 内に <p class="container footer-note"> が見つかりません`
+    );
+
+    const expectedHref = `https://policies.google.com/technologies/partner-sites?hl=${isEn ? 'en' : 'ja'}`;
+    assert.ok(
+      footerHtml.includes(expectedHref),
+      `${page}: フッターの開示文言が ${expectedHref} にリンクしていません`
+    );
+  }
+
+  console.log(`PASS: Google Analytics notice verified in the footer on ${checkedCount} pages.`);
+}
+
 console.log('PASS: all site consistency checks passed.');

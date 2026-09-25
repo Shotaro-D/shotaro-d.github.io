@@ -31,7 +31,7 @@ python3 tests/test_light_energy_reference.py
 
 ## Site consistency checks
 
-Checks the skip link, Open Graph tags, that dates on the Japanese and English home and awards pages agree, and also header order (menu button before the navigation), navigation labels, news-to-post anchors, and presentation numbering:
+Checks the skip link, Open Graph tags, that dates on the Japanese and English home and awards pages agree, and also header order (menu button before the navigation), navigation labels, news-to-post anchors, presentation numbering, and the Google Analytics notice in the footer:
 
 ```sh
 node tests/site-consistency.test.mjs
@@ -47,3 +47,5 @@ Each page is a standalone HTML file. Publications, presentations, awards, and us
 - Give every `<time>` in the news list and the awards list a machine-readable `datetime` (`YYYY-MM` or `YYYY-MM-DD`), and keep the same value on both language versions.
 - Conference awards are dated by the month the conference was held (not the month the result was announced), so the home page news and `award.html` show the same month.
 - Grants are listed by selection date on the home page and by funding period on the profile page.
+- When a page's main content changes, update its `<lastmod>` in `sitemap.xml` to that date.
+- Every page that loads Google Analytics must keep the footer notice (`footer-note`) linking to Google's partner-sites policy.
