@@ -150,12 +150,11 @@ document.addEventListener('focusin', (event) => {
   });
 })();
 
-// 論文一覧の絞り込み（著者区分・出版年）。data-publication-filters の枠にフォームを生成する。
+// 査読論文の絞り込み（著者区分・出版年）。data-publication-filters の枠にフォームを生成する。
 // JavaScript が無効なら枠は hidden のままで，全件をそのまま表示する。
 (() => {
   const mount = document.querySelector('[data-publication-filters]');
-  const content = mount?.closest('.content');
-  if (!content) return;
+  if (!mount) return;
 
   const isEn = document.documentElement.lang.startsWith('en');
   const text = isEn
@@ -194,25 +193,22 @@ document.addEventListener('focusin', (event) => {
         separator: '・',
       };
 
-  // h2（査読論文・その他）ごとに，年ラベルとその下の論文をまとめる。出版年は年ラベルから読む。
-  const sections = [];
-  for (const element of content.children) {
-    if (element.tagName === 'H2') {
-      sections.push({ heading: element, groups: [] });
-    } else if (element.classList.contains('publication-year')) {
-      sections.at(-1)?.groups.push({ label: element, year: element.textContent.trim(), records: [] });
-    } else if (element.classList.contains('publication')) {
-      const group = sections.at(-1)?.groups.at(-1);
-      if (!group) continue;
+  // 枠から次の h2（その他）までの年ラベルと論文をまとめる。出版年は年ラベルから読む。
+  const groups = [];
+  for (let element = mount.nextElementSibling; element && element.tagName !== 'H2'; element = element.nextElementSibling) {
+    if (element.classList.contains('publication-year')) {
+      groups.push({ label: element, year: element.textContent.trim(), records: [] });
+    } else if (element.classList.contains('publication') && groups.length > 0) {
       // 著者行が下線（本人）から始まれば筆頭著者，本人名に * が付いていれば責任著者。
       const authors = element.querySelector('p');
       const self = authors?.querySelector('u');
       const first = Boolean(self) && authors.textContent.trimStart().startsWith(self.textContent.trim());
       const corresponding = Boolean(self) && (self.textContent.includes('*') || /^\s*\*/.test(self.nextSibling?.textContent ?? ''));
+      const group = groups.at(-1);
       group.records.push({ element, year: group.year, first, corresponding });
     }
   }
-  const records = sections.flatMap((section) => section.groups.flatMap((group) => group.records));
+  const records = groups.flatMap((group) => group.records);
   if (records.length === 0) return;
 
   // 該当なしの区分や，結果が前の区分と同じになる区分（例: 責任著者の論文がまだない）は選択肢に出さない。
@@ -263,42 +259,33 @@ document.addEventListener('focusin', (event) => {
   status.className = 'publication-filters-status';
   status.setAttribute('role', 'status');
 
-  for (const section of sections) {
-    section.empty = document.createElement('p');
-    section.empty.className = 'publication-filters-empty';
-    section.empty.textContent = text.empty;
-    section.empty.hidden = true;
-    section.heading.after(section.empty);
-  }
+  const empty = document.createElement('p');
+  empty.className = 'publication-filters-empty';
+  empty.textContent = text.empty;
+  empty.hidden = true;
+  mount.after(empty);
 
   const apply = () => {
     const mode = modes.find((entry) => entry.value === author.select.value) ?? modes[0];
     const selectedYear = year.select.value;
     let count = 0;
-    let lastVisible = null;
+    let leading = null;
 
-    for (const section of sections) {
-      let leading = null;
-      for (const group of section.groups) {
-        let groupCount = 0;
-        for (const record of group.records) {
-          const show = mode.matches(record) && (selectedYear === 'all' || record.year === selectedYear);
-          record.element.hidden = !show;
-          record.element.classList.remove('is-last-visible');
-          if (show) {
-            groupCount += 1;
-            lastVisible = record.element;
-          }
-        }
-        group.label.hidden = groupCount === 0;
-        group.label.classList.remove('is-leading');
-        if (groupCount > 0 && !leading) leading = group.label;
-        count += groupCount;
+    for (const group of groups) {
+      let groupCount = 0;
+      for (const record of group.records) {
+        const show = mode.matches(record) && (selectedYear === 'all' || record.year === selectedYear);
+        record.element.hidden = !show;
+        if (show) groupCount += 1;
       }
-      leading?.classList.add('is-leading');
-      section.empty.hidden = Boolean(leading);
+      group.label.hidden = groupCount === 0;
+      // 表示される最初の年ラベルは，絞り込み欄の直後として上余白をなくす。
+      const isLeading = groupCount > 0 && !leading;
+      group.label.classList.toggle('is-leading', isLeading);
+      if (isLeading) leading = group.label;
+      count += groupCount;
     }
-    lastVisible?.classList.add('is-last-visible');
+    empty.hidden = count > 0;
 
     const conditions = [
       mode.value !== 'all' && text.modes[mode.value],

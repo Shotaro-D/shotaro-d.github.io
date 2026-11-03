@@ -792,13 +792,9 @@ a:hover {
   white-space: nowrap;
 }
 
-/* 論文一覧の絞り込み（main.js が中身を生成する。JavaScript 無効時は hidden のまま）。 */
+/* 査読論文の絞り込み（main.js が中身を生成する。JavaScript 無効時は hidden のまま）。 */
 .publication-filters {
-  margin: 0 0 2.4rem;
-}
-
-.content .publication-filters + h2 {
-  margin-top: 0;
+  margin: 0 0 1.8rem;
 }
 
 .publication-filters-fields {
@@ -846,13 +842,10 @@ a:hover {
   display: none;
 }
 
-/* 絞り込みで非表示になった項目があっても，見出し直後の余白と末尾の罫線を保つ。 */
+/* 絞り込み欄の直後に来る年ラベル（非表示の年があれば最初に表示される年）は上余白をなくす。 */
+.content .publication-filters + .publication-year,
 .content .publication-year.is-leading {
   margin-top: 0;
-}
-
-.publication.is-last-visible {
-  border-bottom: 1px solid var(--line);
 }
 
 .content h2.presentation-year {
