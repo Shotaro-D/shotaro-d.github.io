@@ -777,6 +777,84 @@ a:hover {
   overflow-wrap: anywhere;
 }
 
+/* 論文の投稿・採択・オンライン公開日。引用情報より一段控えめに表示する。 */
+.publication .publication-history {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .1rem 1.1rem;
+  margin: .5rem 0 0;
+  color: var(--muted);
+  font-size: .8125rem;
+  line-height: 1.6;
+}
+
+.publication-history time {
+  white-space: nowrap;
+}
+
+/* 論文一覧の絞り込み（main.js が中身を生成する。JavaScript 無効時は hidden のまま）。 */
+.publication-filters {
+  margin: 0 0 2.4rem;
+}
+
+.content .publication-filters + h2 {
+  margin-top: 0;
+}
+
+.publication-filters-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(13rem, 100%), 1fr));
+  gap: .8rem 1rem;
+}
+
+.publication-filters label {
+  display: block;
+  margin-bottom: .3rem;
+  color: var(--muted);
+  font-size: .8125rem;
+  font-weight: 700;
+}
+
+.publication-filters select {
+  width: 100%;
+  min-height: 44px;
+  padding: .4rem .55rem;
+  border: 1px solid var(--field-border);
+  border-radius: .25rem;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.content .publication-filters-status {
+  margin: .7rem 0 0;
+  color: var(--muted);
+  font-size: .8125rem;
+}
+
+.content .publication-filters-empty {
+  margin: 0;
+  padding: 1.1rem 0;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: .875rem;
+}
+
+/* 年ラベルは display を指定しているため，hidden 属性だけでは消えない。 */
+.content .publication-year[hidden] {
+  display: none;
+}
+
+/* 絞り込みで非表示になった項目があっても，見出し直後の余白と末尾の罫線を保つ。 */
+.content .publication-year.is-leading {
+  margin-top: 0;
+}
+
+.publication.is-last-visible {
+  border-bottom: 1px solid var(--line);
+}
+
 .content h2.presentation-year {
   margin-top: 2.6rem;
   padding-bottom: .4rem;
@@ -1368,7 +1446,8 @@ a:hover {
   .menu-button,
   .language-switch,
   .button,
-  .copy-actions {
+  .copy-actions,
+  .publication-filters-fields {
     display: none;
   }
 
