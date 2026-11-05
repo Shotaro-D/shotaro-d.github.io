@@ -5,3 +5,7 @@
 
 # 出版社の表紙PDF（手元の資料用。サイトでは公開しない）
 assets/images/d6cc90283a.pdf
+
+# Python運用ツールの生成キャッシュ
+__pycache__/
+*.py[cod]
