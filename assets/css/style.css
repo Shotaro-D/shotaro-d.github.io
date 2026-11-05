@@ -1219,7 +1219,7 @@ a:hover {
 .footer {
   margin-top: 0;
   border-top: 1px solid var(--line);
-  padding: 2.7rem 0;
+  padding: 1rem 0;
   background: color-mix(in srgb, var(--pale) 56%, var(--paper));
   color: var(--muted);
   font-size: .8125rem;
@@ -1231,10 +1231,16 @@ a:hover {
   gap: 1rem;
 }
 
+.footer-inner p {
+  margin: 0;
+}
+
 .footer-note {
-  margin: 1.25rem auto 0;
-  padding-top: 1rem;
+  margin: .5rem auto 0;
+  padding-top: .375rem;
   border-top: 1px solid var(--line);
+  font-size: .5625rem;
+  line-height: 1.5;
 }
 
 /* Responsive */
