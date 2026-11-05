@@ -1,11 +1,58 @@
-.DS_Store
+# Publish only the static website. New paths require explicit review.
+*
 
-# ローカルバックアップ
-/backup/
+# Required directories
+!/Posts/
+!/assets/
+!/award/
+!/en/
+!/Posts/2025-07-08_PdRuANPs/
+!/Posts/2026-03-01_InkjetAuNUs/
+!/Posts/2026-07-30_AdditiveFreeZIF-8/
+!/assets/css/
+!/assets/images/
+!/assets/js/
+!/assets/images/resized/
 
-# 出版社の表紙PDF（手元の資料用。サイトでは公開しない）
-assets/images/d6cc90283a.pdf
-
-# Python運用ツールの生成キャッシュ
-__pycache__/
-*.py[cod]
+# Runtime pages and assets
+!/.gitignore
+!/.nojekyll
+!/404.html
+!/Posts/2025-07-08_PdRuANPs/image.png
+!/Posts/2026-03-01_InkjetAuNUs/image.png
+!/Posts/2026-07-30_AdditiveFreeZIF-8/image-1240w.jpg
+!/Posts/2026-07-30_AdditiveFreeZIF-8/image-620w.jpg
+!/assets/css/style.css
+!/assets/images/face.jpg
+!/assets/images/favicon.svg
+!/assets/images/in-situ-ZIF-8.png
+!/assets/images/og-image.png
+!/assets/images/resized/cmatex-2025-37-13-cover-1080w.jpg
+!/assets/images/resized/cmatex-2025-37-13-cover-720w.jpg
+!/assets/images/resized/d6cc90283a-front-cover-1080w.jpg
+!/assets/images/resized/d6cc90283a-front-cover-720w.jpg
+!/assets/js/main.js
+!/award.html
+!/award/index.html
+!/awards.html
+!/en/award.html
+!/en/index.html
+!/en/light-energy-calculation.html
+!/en/pdf-q-range-calculation.html
+!/en/post.html
+!/en/presentations.html
+!/en/profile.html
+!/en/publications.html
+!/en/resources.html
+!/en/subscript-superscript.html
+!/index.html
+!/light-energy-calculation.html
+!/pdf-q-range-calculation.html
+!/post.html
+!/presentations.html
+!/profile.html
+!/publications.html
+!/resources.html
+!/robots.txt
+!/sitemap.xml
+!/subscript-superscript.html
