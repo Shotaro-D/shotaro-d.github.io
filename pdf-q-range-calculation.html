@@ -140,6 +140,7 @@
             <p>例えばQ<sub>min</sub> = 0.70 Å<sup>−1</sup>では，ZIF-8の(110)反射は低角側で失われますが，(200)以降の代表反射は収録範囲に入ります。Q<sub>max</sub>を大きくすると，PDFの概算実空間分解能 Δr ≈ π/Q<sub>max</sub>は小さくなります。</p>
 
             <h2>計算方法と注意</h2>
+            <p>Qの理論上限は4π/λ（2θ = 180°）です。この上限を超えるQmaxでは計算しません。装置で到達できるQの上限はこれより低い場合があるため，実際の測定角度範囲に合わせてQmaxを設定してください。</p>
             <p class="calculator-formula"><code>d = a / √(h<sup>2</sup> + k<sup>2</sup> + l<sup>2</sup>)</code><br><code>Q = 2π / d</code><br><code>2θ = 2 sin<sup>−1</sup>(λ / 2d)</code><br><code>Δr ≈ π / Q<sub>max</sub></code></p>
             <p>このページは，立方晶の格子から計算した反射位置だけを示します。構造因子，原子散乱因子，反射強度，装置分解能，検出器の受光効率，バックグラウンドは考慮していません。そのため，「収録」は実測で明瞭なピークが得られることを保証するものではありません。</p>
             <p>PDFの実際の品質は，Q<sub>min</sub>とQ<sub>max</sub>だけでなく，補正・規格化，バックグラウンド処理，測定時間，統計精度，および高Q側のS/Nにも依存します。PDF解析で用いる規格化関数の定義によって式の表記は異なりますが，このページではQ範囲設計の目安としてΔrを表示しています。</p>
@@ -194,8 +195,9 @@
       };
 
       const readQMin = () => {
-        const value = Number(document.getElementById('q-min').value);
-        if (!Number.isFinite(value) || value < 0) {
+        const raw = document.getElementById('q-min').value.trim();
+        const value = Number(raw);
+        if (raw === '' || !Number.isFinite(value) || value < 0) {
           throw new Error('Qminには0以上の有限の数値を入力してください。');
         }
         return value;
@@ -230,6 +232,11 @@
           const qMin = readQMin();
           const qMax = readPositive('q-max');
           if (qMin >= qMax) throw new Error('QmaxはQminより大きくしてください。');
+
+          const qLimit = 4 * Math.PI / wavelength;
+          if (qMax > qLimit) {
+            throw new Error(`Qmaxが指定波長の理論上限（4π/λ = ${format(qLimit, 6)} Å⁻¹）を超えています。Qmaxを小さくするか，波長を短くしてください。`);
+          }
 
           const results = calculate(a, wavelength, qMin, qMax);
           for (const result of results) {

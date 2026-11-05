@@ -142,6 +142,7 @@
             <p>For example, with Q<sub>min</sub> = 0.70 Å<sup>−1</sup>, the ZIF-8 (110) reflection is lost on the low-angle side, while the representative reflections from (200) onward remain within the selected range. Increasing Q<sub>max</sub> decreases the approximate real-space resolution Δr ≈ π/Q<sub>max</sub>.</p>
 
             <h2>Method and limitations</h2>
+            <p>The theoretical upper limit is Q = 4π/λ (2θ = 180°). Values of Qmax above this limit are rejected. The maximum Q accessible with your instrument may be lower; use the actual angular coverage when selecting Qmax.</p>
             <p class="calculator-formula"><code>d = a / √(h<sup>2</sup> + k<sup>2</sup> + l<sup>2</sup>)</code><br><code>Q = 2π / d</code><br><code>2θ = 2 sin<sup>−1</sup>(λ / 2d)</code><br><code>Δr ≈ π / Q<sub>max</sub></code></p>
             <p>This page reports geometric reflection positions calculated for a cubic lattice. It does not account for structure factors, atomic scattering factors, reflection intensities, instrumental resolution, detector efficiency, or background. “Covered” therefore does not guarantee that a distinct experimental peak will be observed.</p>
             <p>Actual PDF quality depends not only on Q<sub>min</sub> and Q<sub>max</sub>, but also on corrections and normalization, background treatment, counting time, statistical precision, and high-Q signal-to-noise. The precise expression used for the PDF normalization can vary; Δr is shown here as a guide for Q-range design.</p>
@@ -196,8 +197,9 @@
       };
 
       const readQMin = () => {
-        const value = Number(document.getElementById('q-min').value);
-        if (!Number.isFinite(value) || value < 0) {
+        const raw = document.getElementById('q-min').value.trim();
+        const value = Number(raw);
+        if (raw === '' || !Number.isFinite(value) || value < 0) {
           throw new Error('Enter a finite value of 0 or greater for Qmin.');
         }
         return value;
@@ -232,6 +234,11 @@
           const qMin = readQMin();
           const qMax = readPositive('q-max');
           if (qMin >= qMax) throw new Error('Qmax must be greater than Qmin.');
+
+          const qLimit = 4 * Math.PI / wavelength;
+          if (qMax > qLimit) {
+            throw new Error(`Qmax exceeds the theoretical limit for this wavelength (4π/λ = ${format(qLimit, 6)} Å⁻¹). Reduce Qmax or use a shorter wavelength.`);
+          }
 
           const results = calculate(a, wavelength, qMin, qMax);
           for (const result of results) {
