@@ -303,3 +303,102 @@ document.addEventListener('focusin', (event) => {
   mount.append(fields, status);
   mount.hidden = false;
 })();
+
+// 独自のアクセス解析（Cloudflare Workers + D1）。Cookieは使わず，閲覧ページ・滞在時間・外部リンクのクリックを送る。
+// 自分の閲覧を除外するには，各ブラウザーで一度 ?analytics=off を付けて開く（?analytics=on で解除）。
+(() => {
+  const ENDPOINT = 'https://homepage-analytics.shotaro-danjo.workers.dev/collect';
+  if (!ENDPOINT || location.hostname !== 'shotaro-d.github.io' || typeof navigator.sendBeacon !== 'function') return;
+
+  const OPTOUT_KEY = 'analytics-optout';
+  try {
+    const flag = new URLSearchParams(location.search).get('analytics');
+    if (flag === 'off') localStorage.setItem(OPTOUT_KEY, '1');
+    else if (flag === 'on') localStorage.removeItem(OPTOUT_KEY);
+  } catch (error) { /* 保存できない環境では何もしない */ }
+  try {
+    if (localStorage.getItem(OPTOUT_KEY)) return;
+  } catch (error) { /* 読み取れない場合は計測を続ける */ }
+
+  const randomId = () => {
+    const bytes = new Uint8Array(12);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  };
+  const send = (data) => {
+    try {
+      navigator.sendBeacon(ENDPOINT, JSON.stringify(data));
+    } catch (error) { /* 送信失敗は無視する */ }
+  };
+
+  let id;
+  let sid;
+  try {
+    id = randomId();
+    try {
+      sid = sessionStorage.getItem('analytics-sid');
+      if (!sid) {
+        sid = randomId();
+        sessionStorage.setItem('analytics-sid', sid);
+      }
+    } catch (error) {
+      sid = sid || randomId();
+    }
+  } catch (error) {
+    return;
+  }
+
+  send({
+    t: 'pageview',
+    id,
+    sid,
+    p: location.pathname,
+    l: (document.documentElement.lang || '').toLowerCase().startsWith('en') ? 'en' : 'ja',
+    r: document.referrer,
+    w: window.screen ? window.screen.width : 0,
+  });
+
+  // 表示状態の時間だけを積算する。
+  let visibleMs = 0;
+  let visibleSince = document.visibilityState === 'visible' ? performance.now() : null;
+  let maxScroll = 0;
+  let ticking = false;
+
+  const measureScroll = () => {
+    ticking = false;
+    const root = document.documentElement;
+    const scrollable = root.scrollHeight - window.innerHeight;
+    const pct = scrollable <= 0 ? 100 : Math.round(((window.scrollY || root.scrollTop) / scrollable) * 100);
+    maxScroll = Math.max(maxScroll, Math.min(100, Math.max(0, pct)));
+  };
+  window.addEventListener('scroll', () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(measureScroll);
+  }, { passive: true });
+  measureScroll();
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      if (visibleSince !== null) {
+        visibleMs += performance.now() - visibleSince;
+        visibleSince = null;
+      }
+      measureScroll();
+      send({ t: 'engage', id, ms: Math.round(visibleMs), sc: maxScroll });
+    } else if (visibleSince === null) {
+      visibleSince = performance.now();
+    }
+  });
+
+  document.addEventListener('click', (event) => {
+    try {
+      const anchor = event.target && event.target.closest ? event.target.closest('a[href]') : null;
+      if (!anchor) return;
+      const url = new URL(anchor.href, location.href);
+      if ((url.protocol === 'http:' || url.protocol === 'https:') && url.host !== location.host) {
+        send({ t: 'outbound', id, u: url.href });
+      }
+    } catch (error) { /* 解析できないリンクは送らない */ }
+  }, true);
+})();
