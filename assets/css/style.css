@@ -300,6 +300,21 @@ a:hover {
   padding: 3.3rem 0 2.5rem;
 }
 
+/* 論文ページの帯に，実験装置の写真を薄く重ねる（装飾。右側だけに置き，左へ向けて透明にする）。 */
+.hero-publications::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 auto;
+  z-index: -1;
+  width: min(62%, 60rem);
+  background: url("../images/hero-publications.jpg") center / cover no-repeat;
+  opacity: .3;
+  filter: grayscale(.3);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 40%);
+  mask-image: linear-gradient(to right, transparent, #000 40%);
+  pointer-events: none;
+}
+
 .eyebrow {
   margin: 0 0 .6rem;
   color: var(--accent);
@@ -1403,6 +1418,10 @@ a:hover {
   .button-outline {
     border: 1px solid var(--accent);
   }
+
+  .hero-publications::after {
+    display: none;
+  }
 }
 
 @media (max-width: 26.25em) {
@@ -1565,5 +1584,9 @@ a:hover {
   li {
     orphans: 3;
     widows: 3;
+  }
+
+  .hero-publications::after {
+    display: none;
   }
 }
