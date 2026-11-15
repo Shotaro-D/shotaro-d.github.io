@@ -300,19 +300,28 @@ a:hover {
   padding: 3.3rem 0 2.5rem;
 }
 
-/* 論文ページの帯に，実験装置の写真を薄く重ねる（装飾。右側だけに置き，左へ向けて透明にする）。 */
-.hero-publications::after {
+/* 論文・ツールページの帯に，写真を薄く重ねる（装飾。右側だけに置き，左へ向けて透明にする）。 */
+.hero-publications::after,
+.hero-tools::after {
   content: "";
   position: absolute;
   inset: 0 0 0 auto;
   z-index: -1;
   width: min(62%, 60rem);
-  background: url("../images/hero-publications.jpg") center / cover no-repeat;
+  background: center / cover no-repeat;
   opacity: .3;
   filter: grayscale(.3);
   -webkit-mask-image: linear-gradient(to right, transparent, #000 40%);
   mask-image: linear-gradient(to right, transparent, #000 40%);
   pointer-events: none;
+}
+
+.hero-publications::after {
+  background-image: url("../images/hero-publications.jpg");
+}
+
+.hero-tools::after {
+  background-image: url("../images/hero-tools.jpg");
 }
 
 .eyebrow {
@@ -1419,7 +1428,8 @@ a:hover {
     border: 1px solid var(--accent);
   }
 
-  .hero-publications::after {
+  .hero-publications::after,
+  .hero-tools::after {
     display: none;
   }
 }
@@ -1586,7 +1596,8 @@ a:hover {
     widows: 3;
   }
 
-  .hero-publications::after {
+  .hero-publications::after,
+  .hero-tools::after {
     display: none;
   }
 }
