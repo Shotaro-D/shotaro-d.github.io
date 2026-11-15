@@ -18,6 +18,7 @@
   --surface: rgba(255, 255, 255, .58);
   --shadow-soft: 0 12px 32px rgba(24, 48, 43, .08);
   --shadow-lift: 0 14px 28px rgba(14, 65, 56, .16);
+  --shadow-card: 0 1px 2px rgba(24, 48, 43, .06), 0 6px 18px rgba(24, 48, 43, .09);
   --max: 1000px;
   --gutter: 20px;
 }
@@ -40,6 +41,7 @@
     --surface: rgba(34, 48, 43, .64);
     --shadow-soft: 0 12px 32px rgba(0, 0, 0, .2);
     --shadow-lift: 0 14px 28px rgba(0, 0, 0, .28);
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, .3), 0 6px 18px rgba(0, 0, 0, .3);
   }
 }
 
@@ -443,14 +445,18 @@ a:hover {
 }
 
 .news-list {
-  max-width: 44rem;
+  display: grid;
+  gap: .9rem;
 }
 
 .news-list li {
+  display: flex;
+  flex-direction: column;
   padding: 1.1rem 1.25rem;
   border: 1px solid var(--line);
   border-radius: .7rem;
   background: var(--surface);
+  box-shadow: var(--shadow-card);
   font-size: 1rem;
 }
 
@@ -463,19 +469,41 @@ a:hover {
   letter-spacing: .035em;
 }
 
-.news-list li + li {
-  margin-top: .7rem;
-}
-
 .news-list p {
   margin: 0;
+}
+
+.news-thumb {
+  display: block;
+  margin-bottom: .8rem;
+}
+
+.news-thumb img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: .45rem;
+}
+
+@media (min-width: 46em) {
+  .news-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  /* 画像付きカードを3行分として扱い，文字だけのカードを隣の列の空きに詰める。 */
+  .news-list li:has(.news-thumb) {
+    grid-row: span 3;
+  }
 }
 
 .news-list .news-links {
   display: flex;
   flex-wrap: wrap;
   gap: .25rem 1.4rem;
-  margin-top: .45rem;
+  margin-top: auto;
+  padding-top: .45rem;
 }
 
 .news-links a {
@@ -1438,6 +1466,7 @@ a:hover {
     --surface: transparent;
     --shadow-soft: none;
     --shadow-lift: none;
+    --shadow-card: none;
   }
 
   .skip-link,
