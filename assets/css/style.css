@@ -352,8 +352,9 @@ a:hover {
   word-break: auto-phrase;
 }
 
+/* 見出しの行高ぶん上側が広く見えるので，上の余白を下より小さくする。 */
 .home-hero {
-  padding: clamp(1.75rem, 4vw, 2.5rem) 0;
+  padding: clamp(1.25rem, 3vw, 1.75rem) 0 clamp(1.75rem, 4vw, 2.5rem);
 }
 
 .page-hero .hero-name {
