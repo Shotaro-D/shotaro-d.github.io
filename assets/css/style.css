@@ -385,7 +385,7 @@ a:hover {
 /* Content */
 
 .section {
-  padding: clamp(3.4rem, 7vw, 5.6rem) 0;
+  padding: clamp(3.4rem, 7vw, 5.6rem) 0 clamp(2rem, 4vw, 3rem);
 }
 
 /* トップページだけ，ヒーロー直後の余白を詰める（:where で詳細度を上げず，印刷用の .section 指定を優先させる）。 */
@@ -525,6 +525,22 @@ a:hover {
   /* 画像付きカードを3行分として扱い，文字だけのカードを隣の列の空きに詰める。 */
   .news-list li:has(.news-thumb) {
     grid-row: span 3;
+  }
+}
+
+/* main.js が各カードの高さ（px）を --rows に入れ，1px単位の行で隙間なく並べる。
+   行間は span に含めるので row-gap は0にし，最後の行に付く余分な間隔を負のマージンで打ち消す。
+   印刷時は上の span 3 の並べ方のまま。 */
+@media screen and (min-width: 46em) {
+  .news-list.is-masonry {
+    grid-auto-rows: 1px;
+    row-gap: 0;
+    margin-bottom: -.9rem;
+  }
+
+  .news-list.is-masonry li,
+  .news-list.is-masonry li:has(.news-thumb) {
+    grid-row: auto / span var(--rows, 1);
   }
 }
 

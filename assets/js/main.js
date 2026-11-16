@@ -304,6 +304,25 @@ document.addEventListener('focusin', (event) => {
   mount.hidden = false;
 })();
 
+// トップの Recent news を2列で隙間なく並べる（DOMの順番は変えない）。各カードの高さ＋列間隔を
+// --rows に入れ，CSSの1px単位の行で span させる。JavaScript が無効なら CSS の span 3 で表示する。
+(() => {
+  const list = document.querySelector('.news-list');
+  if (!list || typeof ResizeObserver !== 'function') return;
+  const items = Array.from(list.children);
+  const update = () => {
+    const gap = parseFloat(getComputedStyle(list).columnGap) || 0;
+    items.forEach((item) => {
+      item.style.setProperty('--rows', String(Math.ceil(item.getBoundingClientRect().height + gap)));
+    });
+  };
+  list.classList.add('is-masonry');
+  // 画像の読み込み・文字の拡大・画面幅の変化でカードの高さが変わったら再計算する。
+  const observer = new ResizeObserver(update);
+  items.forEach((item) => observer.observe(item));
+  update();
+})();
+
 // 独自のアクセス解析（Cloudflare Workers + D1）。Cookieは使わず，閲覧ページ・滞在時間・外部リンクのクリックを送る。
 // 自分の閲覧を除外するには，各ブラウザーで一度 ?analytics=off を付けて開く（?analytics=on で解除）。
 (() => {
