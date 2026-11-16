@@ -354,7 +354,7 @@ a:hover {
 
 /* 見出しの行高ぶん上側が広く見えるので，上の余白を下より小さくする。 */
 .home-hero {
-  padding: clamp(1.25rem, 3vw, 1.75rem) 0 clamp(1.75rem, 4vw, 2.5rem);
+  padding: clamp(1.25rem, 3vw, 1.75rem) 0 clamp(1.5rem, 3.5vw, 2rem);
 }
 
 .page-hero .hero-name {
@@ -390,7 +390,7 @@ a:hover {
 
 /* トップページだけ，ヒーロー直後の余白を詰める（:where で詳細度を上げず，印刷用の .section 指定を優先させる）。 */
 :where(.home-hero) + .section {
-  padding-top: clamp(2.25rem, 4.5vw, 3.25rem);
+  padding-top: clamp(1.5rem, 3vw, 2rem);
 }
 
 .section-tint {
