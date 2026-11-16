@@ -353,7 +353,7 @@ a:hover {
 }
 
 .home-hero {
-  padding: clamp(2.75rem, 6vw, 4rem) 0 clamp(2.25rem, 5vw, 3.25rem);
+  padding: clamp(2.75rem, 6vw, 4rem) 0 clamp(1.75rem, 4vw, 2.5rem);
 }
 
 .page-hero .hero-name {
@@ -385,6 +385,11 @@ a:hover {
 
 .section {
   padding: clamp(3.4rem, 7vw, 5.6rem) 0;
+}
+
+/* トップページだけ，ヒーロー直後の余白を詰める（:where で詳細度を上げず，印刷用の .section 指定を優先させる）。 */
+:where(.home-hero) + .section {
+  padding-top: clamp(2.25rem, 4.5vw, 3.25rem);
 }
 
 .section-tint {
