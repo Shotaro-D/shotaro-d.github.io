@@ -8,6 +8,13 @@
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
 
+    // ?analytics=off を開いたブラウザー（main.js が analytics-optout を保存）は，GA4 で内部トラフィックとして扱う。
+    try {
+      const analyticsFlag = new URLSearchParams(location.search).get('analytics');
+      if (analyticsFlag === 'off' || (analyticsFlag !== 'on' && localStorage.getItem('analytics-optout'))) {
+        gtag('set', { traffic_type: 'internal' });
+      }
+    } catch (error) { /* 判定できない場合は通常どおり計測する */ }
     gtag('config', 'G-JY6FW28PTB');
   </script>
   <meta charset="utf-8">

@@ -325,6 +325,7 @@ document.addEventListener('focusin', (event) => {
 
 // 独自のアクセス解析（Cloudflare Workers + D1）。Cookieは使わず，閲覧ページ・滞在時間・外部リンクのクリックを送る。
 // 自分の閲覧を除外するには，各ブラウザーで一度 ?analytics=off を付けて開く（?analytics=on で解除）。
+// 同じ印（OPTOUT_KEY）を各ページ先頭の GA4 のコードも読み，GA4 には traffic_type=internal を付けて送る。
 (() => {
   const ENDPOINT = 'https://homepage-analytics.shotaro-danjo.workers.dev/collect';
   if (!ENDPOINT || location.hostname !== 'shotaro-d.github.io' || typeof navigator.sendBeacon !== 'function') return;
