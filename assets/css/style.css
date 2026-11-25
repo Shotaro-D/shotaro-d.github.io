@@ -2,43 +2,43 @@
 
 :root {
   color-scheme: light dark;
-  --ink: #172624;
-  --muted: #5d6e6a;
-  --paper: #fcfcfa;
-  --line: #d9e1de;
-  --field-border: #7a8b86;
-  --accent: #176b60;
-  --accent-dark: #10483f;
-  --pale: #eef4f1;
-  --header-bg: rgba(252, 252, 250, .76);
-  --hero-text: #3d514c;
-  --underline: #a0c7bd;
-  --selection-bg: #d4e9e2;
+  --ink: #232323;
+  --muted: #6a6a6a;
+  --paper: #fcfcfc;
+  --line: #dfdfdf;
+  --field-border: #868686;
+  --accent: #404040;
+  --accent-dark: #1a1a1a;
+  --pale: #f2f2f2;
+  --header-bg: rgba(252, 252, 252, .76);
+  --hero-text: #4c4c4c;
+  --underline: #bdbdbd;
+  --selection-bg: #dcdcdc;
   --button-text: #fff;
   --surface: rgba(255, 255, 255, .58);
-  --shadow-soft: 0 12px 32px rgba(24, 48, 43, .08);
-  --shadow-lift: 0 14px 28px rgba(14, 65, 56, .16);
-  --shadow-card: 0 1px 2px rgba(24, 48, 43, .1), 0 4px 10px rgba(24, 48, 43, .08), 0 14px 30px rgba(24, 48, 43, .14);
+  --shadow-soft: 0 12px 32px rgba(38, 38, 38, .08);
+  --shadow-lift: 0 14px 28px rgba(38, 38, 38, .16);
+  --shadow-card: 0 1px 2px rgba(38, 38, 38, .1), 0 4px 10px rgba(38, 38, 38, .08), 0 14px 30px rgba(38, 38, 38, .14);
   --max: 1000px;
   --gutter: 20px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --ink: #e8efeb;
-    --muted: #9baca6;
-    --paper: #121917;
-    --line: #33423d;
-    --field-border: #6b7f78;
-    --accent: #66cdb4;
-    --accent-dark: #a0ecd8;
-    --pale: #1b2824;
-    --header-bg: rgba(18, 25, 23, .76);
-    --hero-text: #c1d0ca;
-    --underline: #41675e;
-    --selection-bg: #214238;
-    --button-text: #0c1211;
-    --surface: rgba(34, 48, 43, .64);
+    --ink: #ededed;
+    --muted: #a7a7a7;
+    --paper: #171717;
+    --line: #3e3e3e;
+    --field-border: #7a7a7a;
+    --accent: #d4d4d4;
+    --accent-dark: #f5f5f5;
+    --pale: #252525;
+    --header-bg: rgba(23, 23, 23, .76);
+    --hero-text: #cccccc;
+    --underline: #5e5e5e;
+    --selection-bg: #3a3a3a;
+    --button-text: #111111;
+    --surface: rgba(44, 44, 44, .64);
     --shadow-soft: 0 12px 32px rgba(0, 0, 0, .2);
     --shadow-lift: 0 14px 28px rgba(0, 0, 0, .28);
     --shadow-card: inset 0 1px 0 rgba(255, 255, 255, .06), 0 2px 4px rgba(0, 0, 0, .45), 0 14px 30px rgba(0, 0, 0, .5);
@@ -630,7 +630,7 @@ a:hover {
   width: 100%;
   height: auto;
   border: 1px solid var(--line);
-  box-shadow: 0 1px 4px rgba(29, 41, 40, .08);
+  box-shadow: 0 1px 4px rgba(38, 38, 38, .08);
 }
 
 .post-media figcaption {
@@ -840,7 +840,7 @@ a:hover {
   width: 100%;
   height: auto;
   border: 1px solid var(--line);
-  box-shadow: 0 1px 4px rgba(29, 41, 40, .08);
+  box-shadow: 0 1px 4px rgba(38, 38, 38, .08);
 }
 
 .cover-art figcaption {
@@ -1366,7 +1366,7 @@ a:hover {
     overscroll-behavior: contain;
     padding: 1rem var(--gutter) 1.3rem;
     background: var(--paper);
-    box-shadow: 0 14px 24px rgba(24, 48, 43, .1);
+    box-shadow: 0 14px 24px rgba(38, 38, 38, .1);
     border-bottom: 1px solid var(--line);
     flex-direction: column;
     align-items: flex-start;
