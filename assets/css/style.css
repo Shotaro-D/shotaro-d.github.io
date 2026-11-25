@@ -830,6 +830,11 @@ a:hover {
   overflow-wrap: anywhere;
 }
 
+/* 「プレスリリース（日付）：京都大学，JASRI，…」のように文とリンクが並ぶ行は，リンクと同じ大きさにそろえる。 */
+.publication .publication-links {
+  font-size: .875rem;
+}
+
 .cover-art {
   width: min(100%, 360px);
   margin: 1.4rem 0 0;
