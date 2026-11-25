@@ -558,6 +558,12 @@ a:hover {
   font-weight: 700;
 }
 
+/* 「プレスリリース（京都大学・JASRI）」のように，1項目の中に複数のリンクを置く。括弧などの文字もリンクと同じ大きさ・太さにする。 */
+.news-links .news-link-group {
+  font-size: .875rem;
+  font-weight: 700;
+}
+
 /* 文字の高さに関係なく，操作領域の高さを44pxにする（レイアウトは変えない）。 */
 .news-links a::before {
   content: "";
